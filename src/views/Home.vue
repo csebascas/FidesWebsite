@@ -37,11 +37,11 @@ onMounted(() => {
       <div class="hero-actions">
         <a href="#" class="cta-btn">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-          Download for iOS
+          iOS
         </a>
         <a href="#" class="cta-btn cta-btn--android">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 2.236l1.442-1.442a.552.552 0 00-.78-.78L16.6 1.6a6.42 6.42 0 00-4.6-1.6 6.42 6.42 0 00-4.6 1.6L5.815.014a.552.552 0 00-.78.78L6.477 2.236A6.36 6.36 0 004 7h16a6.36 6.36 0 00-2.477-4.764zM9 5a1 1 0 110-2 1 1 0 010 2zm6 0a1 1 0 110-2 1 1 0 010 2zM4 8v10a1 1 0 001 1h1v3.5a1.5 1.5 0 003 0V19h6v3.5a1.5 1.5 0 003 0V19h1a1 1 0 001-1V8H4zm-3 0a1.5 1.5 0 00-1.5 1.5v7a1.5 1.5 0 003 0v-7A1.5 1.5 0 001 8zm22 0a1.5 1.5 0 00-1.5 1.5v7a1.5 1.5 0 003 0v-7A1.5 1.5 0 0023 8z"/></svg>
-          Google Play
+          Android
         </a>
         <span class="hero-free">Free to start</span>
       </div>
@@ -184,11 +184,11 @@ onMounted(() => {
     <div class="cta-buttons">
       <a href="#" class="cta-btn cta-btn--lg">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-        Download for iOS
+        iOS
       </a>
       <a href="#" class="cta-btn cta-btn--lg cta-btn--android">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 2.236l1.442-1.442a.552.552 0 00-.78-.78L16.6 1.6a6.42 6.42 0 00-4.6-1.6 6.42 6.42 0 00-4.6 1.6L5.815.014a.552.552 0 00-.78.78L6.477 2.236A6.36 6.36 0 004 7h16a6.36 6.36 0 00-2.477-4.764zM9 5a1 1 0 110-2 1 1 0 010 2zm6 0a1 1 0 110-2 1 1 0 010 2zM4 8v10a1 1 0 001 1h1v3.5a1.5 1.5 0 003 0V19h6v3.5a1.5 1.5 0 003 0V19h1a1 1 0 001-1V8H4zm-3 0a1.5 1.5 0 00-1.5 1.5v7a1.5 1.5 0 003 0v-7A1.5 1.5 0 001 8zm22 0a1.5 1.5 0 00-1.5 1.5v7a1.5 1.5 0 003 0v-7A1.5 1.5 0 0023 8z"/></svg>
-        Google Play
+        Android
       </a>
     </div>
   </section>
@@ -200,7 +200,7 @@ onMounted(() => {
       <div class="footer-links">
         <RouterLink to="/privacy">Privacy</RouterLink>
         <RouterLink to="/terms">Terms</RouterLink>
-        <a href="mailto:hello@joinfides.com">Contact</a>
+        <a href="mailto:support@joinfides.com">Contact</a>
       </div>
     </div>
   </footer>
@@ -273,27 +273,35 @@ nav {
 }
 .hero-headline {
   font-family: var(--serif);
-  font-size: clamp(40px, 7vw, 64px);
+  font-size: clamp(36px, 7vw, 64px);
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.5px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 .hero-sub {
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.65;
   color: var(--text-2);
-  margin-bottom: 36px;
+  margin-bottom: 32px;
 }
 .hero-actions {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 .hero-free {
   font-size: 13px;
   color: var(--text-3);
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .hero { padding: 120px 20px 32px; min-height: 60vh; }
+  .hero-sub { font-size: 14px; margin-bottom: 28px; }
+  .hero-free { margin-top: 4px; }
 }
 
 /* CTA button */
@@ -358,8 +366,9 @@ nav {
 }
 
 @media (max-width: 760px) {
+  .showcase { padding: 0 20px 60px; }
   .phone--back { display: none; }
-  .phone--front img { width: 280px; }
+  .phone--front img { width: 240px; }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -371,12 +380,16 @@ nav {
 }
 .statement p {
   font-family: var(--serif);
-  font-size: clamp(22px, 3.5vw, 32px);
+  font-size: clamp(20px, 3.5vw, 32px);
   font-weight: 400;
   line-height: 1.4;
   color: var(--text-2);
   max-width: 680px;
   margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+  .statement { padding: 48px 20px; }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -386,6 +399,10 @@ nav {
   padding: 40px 24px 60px;
   max-width: 1060px;
   margin: 0 auto;
+}
+
+@media (max-width: 600px) {
+  .editorial { padding: 20px 20px 40px; }
 }
 .ed-block {
   display: grid;
@@ -436,12 +453,13 @@ nav {
   .ed-block,
   .ed-block--reverse {
     grid-template-columns: 1fr;
-    gap: 32px;
-    padding: 48px 0;
+    gap: 28px;
+    padding: 40px 0;
   }
   .ed-block--reverse .ed-text { order: 1; }
   .ed-block--reverse .ed-phone { order: 2; }
-  .ed-phone { max-width: 280px; }
+  .ed-phone { max-width: 220px; margin: 0 auto; }
+  .ed-text p { font-size: 14px; }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -489,6 +507,12 @@ nav {
   flex-shrink: 0;
 }
 
+@media (max-width: 600px) {
+  .pillars { padding: 48px 20px; }
+  .pillars-sub { margin-bottom: 28px; }
+  .pillar { font-size: 13px; padding: 10px 16px; }
+}
+
 /* ═══════════════════════════════════════════════════════
    COLLECT
    ═══════════════════════════════════════════════════════ */
@@ -530,12 +554,15 @@ nav {
 }
 
 @media (max-width: 760px) {
+  .collect { padding: 48px 20px; }
   .collect-inner {
     grid-template-columns: 1fr;
     text-align: center;
+    gap: 32px;
   }
-  .collect-text p { margin: 0 auto; }
-  .collect-phones .phone img { width: 160px; }
+  .collect-text p { margin: 0 auto; font-size: 14px; }
+  .collect-phones .phone img { width: 140px; }
+  .phone--overlap { margin-top: 32px; }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -573,11 +600,14 @@ nav {
 }
 
 @media (max-width: 760px) {
+  .streak-section { padding: 48px 20px; }
   .streak-inner {
     grid-template-columns: 1fr;
-    gap: 32px;
+    gap: 28px;
+    text-align: center;
   }
-  .streak-phone { max-width: 240px; margin: 0 auto; }
+  .streak-phone { max-width: 200px; margin: 0 auto; }
+  .streak-text p { font-size: 14px; margin: 0 auto; }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -587,6 +617,12 @@ nav {
   text-align: center;
   padding: 120px 24px;
   border-top: 0.5px solid var(--line);
+}
+
+@media (max-width: 600px) {
+  .final-cta { padding: 72px 20px; }
+  .final-cta p { font-size: 14px; }
+  .cta-btn--lg { font-size: 14px; padding: 14px 28px; }
 }
 .final-cta h2 {
   font-family: var(--serif);

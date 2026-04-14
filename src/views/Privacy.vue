@@ -137,7 +137,7 @@ import { RouterLink } from 'vue-router'
       to know what personal information we collect, request deletion, and opt out
       of the sale of personal information. We do not sell personal information.
       To exercise any of these rights, contact us at
-      <a href="mailto:privacy@joinfides.com">privacy@joinfides.com</a>.
+      <a href="mailto:support@joinfides.com">support@joinfides.com</a>.
     </p>
 
     <h2>9. Children's Privacy</h2>
@@ -169,7 +169,7 @@ import { RouterLink } from 'vue-router'
     <p>
       If you have questions about this Privacy Policy, wish to exercise your data
       rights, or need to reach our data protection contact, email us at
-      <a href="mailto:privacy@joinfides.com">privacy@joinfides.com</a>.
+      <a href="mailto:support@joinfides.com">support@joinfides.com</a>.
     </p>
   </article>
 

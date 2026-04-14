@@ -169,7 +169,7 @@ import { RouterLink } from 'vue-router'
     <h2>15. Contact</h2>
     <p>
       For questions about these Terms, contact us at
-      <a href="mailto:legal@joinfides.com">legal@joinfides.com</a>.
+      <a href="mailto:support@joinfides.com">support@joinfides.com</a>.
     </p>
   </article>
 
