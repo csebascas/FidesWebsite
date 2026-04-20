@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
 const tabs = [
   { key: 'feedback', label: 'User Feedback' },
