@@ -172,33 +172,26 @@ async function fetchData() {
     if (res.ok) {
       const json = await res.json()
       const raw = json.data ?? json
-      // Flatten nested relations for display
       rows.value = (Array.isArray(raw) ? raw : []).map((row: any) => {
         const flat: any = { ...row }
-        // lessons: tracks(name, pillars(name)) → track, pillar, steps count
-        if (row.tracks) {
-          flat.track = row.tracks.name ?? '—'
-          flat.pillar = row.tracks.pillars?.name ?? '—'
-        }
-        // tracks: pillars(name) → pillar
-        if (row.pillars && !row.tracks) {
-          flat.pillar = row.pillars.name ?? '—'
-        }
-        // lessons: count steps from lesson_steps if present, or show xp_reward
+        // Enriched fields from API
+        flat.track = row._track_name ?? '—'
+        flat.pillar = row._pillar_name ?? '—'
         if (contentType.value === 'lessons') {
           flat.steps = row.step_count ?? '—'
           flat.xp = row.xp_reward ?? '—'
         }
-        // tracks: lesson_count
         if (contentType.value === 'tracks') {
           flat.lessons = row.lesson_count ?? '—'
         }
-        // saints: format feast day
         if (contentType.value === 'saints' && row.feast_month) {
           flat.feast_day = `${row.feast_month}/${row.feast_day_number ?? '?'}`
         }
         return flat
       })
+    } else {
+      const err = await res.json().catch(() => ({}))
+      console.error('Content fetch error:', err)
     }
   } catch {
     // ignore
