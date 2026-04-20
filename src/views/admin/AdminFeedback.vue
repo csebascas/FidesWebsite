@@ -118,19 +118,9 @@ function formatDate(dateStr: string): string {
   })
 }
 
-onMounted(async () => {
-  try {
-    const res = await fetch('/api/content/feedback')
-    if (res.ok) {
-      const data = await res.json()
-      feedbackItems.value = data.feedback || []
-      reportItems.value = data.reports || []
-      requestItems.value = data.requests || []
-    }
-  } catch {
-    // ignore
-  }
-})
+// Feedback tables don't exist yet — this page is a placeholder.
+// When user_feedback, content_reports, topic_requests tables are created,
+// wire up a dedicated /api/feedback endpoint.
 </script>
 
 <style scoped>

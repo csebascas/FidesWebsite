@@ -54,10 +54,10 @@ onMounted(async () => {
     if (res.ok) {
       const data = await res.json()
       stats.value = {
-        totalUsers: data.total_users ?? data.totalUsers ?? null,
-        proUsers: data.pro_users ?? data.proUsers ?? null,
-        activeToday: data.active_today ?? data.activeToday ?? null,
-        avgStreak: data.avg_streak ?? data.avgStreak ?? null,
+        totalUsers: data.total_users ?? null,
+        proUsers: data.pro_users ?? null,
+        activeToday: data.lessons_completed_today ?? null,
+        avgStreak: data.average_streak ?? null,
       }
     }
   } catch {

@@ -28,9 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     usersLast30,
     lessonsToday,
     lessonsThisWeek,
-    avgStreak,
-    streakDistribution,
-    topLessons,
+    streakUsers,
   ] = await Promise.allSettled([
     supabase.from('users').select('*', { count: 'exact', head: true }),
     supabase.from('users').select('*', { count: 'exact', head: true }).eq('subscription_tier', 'pro'),
@@ -47,38 +45,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .select('*', { count: 'exact', head: true })
       .gte('completed_at', weekStartISO)
       .not('completed_at', 'is', null),
-    supabase.rpc('exec_sql', {
-      query: `SELECT ROUND(AVG(streak_current)::numeric, 1) as avg FROM users WHERE streak_current > 0`,
-    }),
-    supabase.rpc('exec_sql', {
-      query: `
-        SELECT
-          CASE
-            WHEN streak_current = 0 THEN '0'
-            WHEN streak_current BETWEEN 1 AND 3 THEN '1-3'
-            WHEN streak_current BETWEEN 4 AND 7 THEN '4-7'
-            WHEN streak_current BETWEEN 8 AND 14 THEN '8-14'
-            WHEN streak_current BETWEEN 15 AND 30 THEN '15-30'
-            ELSE '30+'
-          END as bucket,
-          count(*) as count
-        FROM users
-        GROUP BY bucket
-        ORDER BY MIN(streak_current)
-      `,
-    }),
-    supabase.rpc('exec_sql', {
-      query: `
-        SELECT l.title, count(*) as completions
-        FROM user_lesson_progress ulp
-        JOIN lessons l ON l.id = ulp.lesson_id
-        WHERE ulp.completed_at IS NOT NULL
-        GROUP BY l.id, l.title
-        ORDER BY completions DESC
-        LIMIT 5
-      `,
-    }),
+    // Fetch streak data for all users to compute avg + distribution client-side
+    supabase.from('users').select('streak_current'),
   ]);
+
+  // Compute average streak and distribution from raw data
+  let averageStreak: number | null = null;
+  const distribution: Record<string, number> = { '0': 0, '1-3': 0, '4-7': 0, '8-14': 0, '15-30': 0, '30+': 0 };
+
+  if (streakUsers.status === 'fulfilled' && streakUsers.value.data) {
+    const streaks = streakUsers.value.data.map((u: any) => u.streak_current ?? 0);
+    const active = streaks.filter((s: number) => s > 0);
+    if (active.length > 0) {
+      averageStreak = Math.round((active.reduce((a: number, b: number) => a + b, 0) / active.length) * 10) / 10;
+    }
+    for (const s of streaks) {
+      if (s === 0) distribution['0']++;
+      else if (s <= 3) distribution['1-3']++;
+      else if (s <= 7) distribution['4-7']++;
+      else if (s <= 14) distribution['8-14']++;
+      else if (s <= 30) distribution['15-30']++;
+      else distribution['30+']++;
+    }
+  }
 
   return res.status(200).json({
     total_users: totalUsers.status === 'fulfilled' ? totalUsers.value.count : null,
@@ -88,8 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     users_last_30_days: usersLast30.status === 'fulfilled' ? usersLast30.value.count : null,
     lessons_completed_today: lessonsToday.status === 'fulfilled' ? lessonsToday.value.count : null,
     lessons_completed_this_week: lessonsThisWeek.status === 'fulfilled' ? lessonsThisWeek.value.count : null,
-    average_streak: avgStreak.status === 'fulfilled' ? avgStreak.value : null,
-    streak_distribution: streakDistribution.status === 'fulfilled' ? streakDistribution.value : null,
-    top_lessons: topLessons.status === 'fulfilled' ? topLessons.value : null,
+    average_streak: averageStreak,
+    streak_distribution: distribution,
   });
 }

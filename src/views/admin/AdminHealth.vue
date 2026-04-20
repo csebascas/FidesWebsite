@@ -11,20 +11,28 @@
         <span class="health-value">{{ dbStatus === 'green' ? 'Connected' : dbStatus === 'loading' ? '...' : 'Error' }}</span>
       </div>
 
-      <div class="health-card" v-for="job in cronJobs" :key="job.name">
-        <div class="health-header">
-          <span class="dot" :class="job.status"></span>
-          <span class="health-label">{{ job.name }}</span>
-        </div>
-        <span class="health-value">{{ job.lastRun }}</span>
-      </div>
-
       <div class="health-card">
         <div class="health-header">
           <span class="dot" :class="stuckStreaks > 0 ? 'yellow' : 'green'"></span>
           <span class="health-label">Stuck Streaks</span>
         </div>
         <span class="health-value">{{ stuckStreaks }}</span>
+      </div>
+
+      <div class="health-card">
+        <div class="health-header">
+          <span class="dot green"></span>
+          <span class="health-label">Total Users</span>
+        </div>
+        <span class="health-value">{{ totalUsers ?? '...' }}</span>
+      </div>
+
+      <div class="health-card">
+        <div class="health-header">
+          <span class="dot green"></span>
+          <span class="health-label">Pro Users</span>
+        </div>
+        <span class="health-value">{{ proUsers ?? '...' }}</span>
       </div>
     </div>
 
@@ -33,7 +41,11 @@
     </button>
 
     <div v-if="integrityResult" class="integrity-result">
-      <pre>{{ integrityResult }}</pre>
+      <div v-for="(check, key) in integrityChecks" :key="key" class="integrity-row">
+        <span class="dot" :class="check.ok ? 'green' : 'red'"></span>
+        <span class="integrity-key">{{ key }}</span>
+        <span class="integrity-detail">{{ check.detail }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -41,27 +53,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 
-interface CronJob {
-  name: string
-  lastRun: string
-  status: 'green' | 'red'
-}
-
 const dbStatus = ref<'green' | 'red' | 'loading'>('loading')
-const cronJobs = ref<CronJob[]>([])
 const stuckStreaks = ref(0)
+const totalUsers = ref<number | null>(null)
+const proUsers = ref<number | null>(null)
 const checking = ref(false)
-const integrityResult = ref('')
-
-function timeAgo(dateStr: string): string {
-  if (!dateStr) return 'Never'
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const hours = Math.floor(diff / 3600000)
-  if (hours < 1) return 'Just now'
-  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
-  const days = Math.floor(hours / 24)
-  return `${days} day${days > 1 ? 's' : ''} ago`
-}
+const integrityResult = ref(false)
+const integrityChecks = ref<Record<string, { ok: boolean; detail: string }>>({})
 
 onMounted(async () => {
   try {
@@ -69,16 +67,9 @@ onMounted(async () => {
     if (res.ok) {
       const data = await res.json()
       dbStatus.value = data.database?.connected ? 'green' : 'red'
-      stuckStreaks.value = data.stuck_streaks ?? data.stuckStreaks ?? 0
-
-      if (data.cron_jobs || data.cronJobs) {
-        const jobs = data.cron_jobs || data.cronJobs
-        cronJobs.value = jobs.map((j: any) => ({
-          name: j.name || j.jobname,
-          lastRun: timeAgo(j.last_run || j.lastRun),
-          status: j.status === 'ok' || j.active ? 'green' : 'red',
-        }))
-      }
+      stuckStreaks.value = data.stuck_streaks ?? 0
+      totalUsers.value = data.total_users
+      proUsers.value = data.pro_users
     } else {
       dbStatus.value = 'red'
     }
@@ -89,17 +80,21 @@ onMounted(async () => {
 
 async function runIntegrityCheck() {
   checking.value = true
-  integrityResult.value = ''
+  integrityResult.value = false
+  integrityChecks.value = {}
   try {
     const res = await fetch('/api/health/integrity')
     if (res.ok) {
       const data = await res.json()
-      integrityResult.value = JSON.stringify(data, null, 2)
+      integrityChecks.value = data.checks ?? {}
+      integrityResult.value = true
     } else {
-      integrityResult.value = 'Failed to run integrity check.'
+      integrityChecks.value = { error: { ok: false, detail: 'Failed to run integrity check.' } }
+      integrityResult.value = true
     }
   } catch {
-    integrityResult.value = 'Network error.'
+    integrityChecks.value = { error: { ok: false, detail: 'Network error.' } }
+    integrityResult.value = true
   } finally {
     checking.value = false
   }
@@ -121,7 +116,7 @@ async function runIntegrityCheck() {
 
 .health-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px;
   margin-bottom: 24px;
 }
@@ -162,8 +157,9 @@ async function runIntegrityCheck() {
 
 .health-value {
   font-family: var(--sans);
-  font-size: 12px;
-  color: var(--text-3);
+  font-size: 18px;
+  color: var(--text);
+  font-weight: 600;
 }
 
 .btn-gold {
@@ -184,18 +180,31 @@ async function runIntegrityCheck() {
 
 .integrity-result {
   margin-top: 16px;
-  background: var(--raised);
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 16px;
-  overflow-x: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.integrity-result pre {
+.integrity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.integrity-key {
   font-family: 'SF Mono', monospace;
   font-size: 12px;
   color: var(--text-2);
-  margin: 0;
-  white-space: pre-wrap;
+  min-width: 180px;
+}
+
+.integrity-detail {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--text-3);
 }
 </style>
