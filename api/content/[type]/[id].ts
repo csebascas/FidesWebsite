@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAdmin } from '../../_lib/auth';
-import { getAdminClient } from '../../_lib/supabase';
+import { verifyAdmin } from '../../_lib/auth.js';
+import { getAdminClient } from '../../_lib/supabase.js';
 
 const VALID_TYPES = ['lessons', 'articles', 'entries', 'saints', 'tracks', 'pillars'];
 

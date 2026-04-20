@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAdminClient } from '../_lib/supabase';
+import { getAdminClient } from '../_lib/supabase.js';
 
 // In-memory rate limit
 const attempts: Record<string, { count: number; resetAt: number }> = {};

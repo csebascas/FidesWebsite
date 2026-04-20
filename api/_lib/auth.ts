@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getAdminClient } from './supabase';
+import { getAdminClient } from './supabase.js';
 
 interface AdminSession {
   email: string;

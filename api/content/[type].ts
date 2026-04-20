@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAdmin } from '../_lib/auth';
-import { getAdminClient } from '../_lib/supabase';
+import { verifyAdmin } from '../_lib/auth.js';
+import { getAdminClient } from '../_lib/supabase.js';
 
 const TYPE_CONFIGS: Record<string, { table: string; select: string; searchFields: string[] }> = {
   lessons: {
