@@ -26,6 +26,49 @@ const routes = [
       description: 'Terms and conditions for using the Fides Catholic education app.',
     },
   },
+  {
+    path: '/d/login',
+    component: () => import('../views/admin/AdminLogin.vue'),
+    meta: {
+      title: 'Admin Login — Fides',
+    },
+  },
+  {
+    path: '/d',
+    component: () => import('../views/admin/AdminLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [
+      {
+        path: '',
+        redirect: '/d/dashboard',
+      },
+      {
+        path: 'dashboard',
+        component: () => import('../views/admin/AdminDashboard.vue'),
+        meta: { title: 'Dashboard — Fides Admin', requiresAuth: true },
+      },
+      {
+        path: 'health',
+        component: () => import('../views/admin/AdminHealth.vue'),
+        meta: { title: 'System Health — Fides Admin', requiresAuth: true },
+      },
+      {
+        path: 'content/:type',
+        component: () => import('../views/admin/AdminContentList.vue'),
+        meta: { title: 'Content — Fides Admin', requiresAuth: true },
+      },
+      {
+        path: 'content/:type/:id',
+        component: () => import('../views/admin/AdminContentEdit.vue'),
+        meta: { title: 'Edit Content — Fides Admin', requiresAuth: true },
+      },
+      {
+        path: 'feedback',
+        component: () => import('../views/admin/AdminFeedback.vue'),
+        meta: { title: 'Feedback — Fides Admin', requiresAuth: true },
+      },
+    ],
+  },
 ]
 
 const router = createRouter({
@@ -34,6 +77,23 @@ const router = createRouter({
   scrollBehavior() {
     return { top: 0 }
   },
+})
+
+router.beforeEach(async (to, _from, next) => {
+  if (to.matched.some((record) => record.meta.requiresAuth)) {
+    try {
+      const res = await fetch('/api/auth/me')
+      if (res.ok) {
+        next()
+      } else {
+        next('/d/login')
+      }
+    } catch {
+      next('/d/login')
+    }
+  } else {
+    next()
+  }
 })
 
 router.afterEach((to) => {
