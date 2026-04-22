@@ -190,10 +190,13 @@ const otherTypes = [
   { type: 'explanation', label: 'Explanation' },
 ]
 
+// Only load from props once on mount — after that, component owns the state
+let initialized = false
 watch(() => props.modelValue, (val) => {
+  if (initialized) return
+  initialized = true
   steps.value = (val || []).map((s: any) => {
     const copy = { ...s, _key: `k${keyCounter++}` }
-    // For unknown types, store raw JSON for editing
     const known = [...contentTypes, ...quizTypes, ...otherTypes].map(t => t.type)
     if (!known.includes(s.type)) {
       copy._rawJson = JSON.stringify(s, null, 2)

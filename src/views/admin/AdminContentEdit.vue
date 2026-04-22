@@ -40,11 +40,24 @@
           <button type="submit" class="btn-gold" :disabled="saving">
             {{ saving ? 'Saving...' : 'Save' }}
           </button>
+          <button type="button" class="btn-danger-sm" @click="showDeleteConfirm = true">Delete</button>
           <span v-if="saveMessage" class="save-message" :class="saveError ? 'error' : 'success'">
             {{ saveMessage }}
           </span>
         </div>
       </form>
+
+      <!-- Delete confirmation -->
+      <div v-if="showDeleteConfirm" class="modal-overlay" @click="showDeleteConfirm = false">
+        <div class="modal" @click.stop>
+          <h3 class="modal-title">Delete {{ singularType }}?</h3>
+          <p class="modal-body">This will permanently delete <strong>{{ item?.title || item?.name || item?.term || 'this item' }}</strong>. This cannot be undone.</p>
+          <div class="modal-actions">
+            <button class="btn-cancel" @click="showDeleteConfirm = false">Cancel</button>
+            <button class="btn-danger" @click="handleDelete" :disabled="deleting">{{ deleting ? 'Deleting...' : 'Delete' }}</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Lesson step editor -->
       <div v-if="contentType === 'lessons'" class="editor-section">
@@ -378,12 +391,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { adminRpc } from '../../lib/supabase'
 import StepEditor from '../../components/StepEditor.vue'
 import BlockEditor from '../../components/BlockEditor.vue'
 
 const route = useRoute()
+const router = useRouter()
 
 const contentType = computed(() => route.params.type as string)
 const contentId = computed(() => route.params.id as string)
@@ -473,6 +487,22 @@ async function handleSave() {
   saving.value = false
 }
 
+const showDeleteConfirm = ref(false)
+const deleting = ref(false)
+
+async function handleDelete() {
+  deleting.value = true
+  const { error } = await adminRpc({ action: 'delete', table: contentType.value, id: contentId.value })
+  if (error) {
+    saveMessage.value = `Delete failed: ${error}`
+    saveError.value = true
+  } else {
+    router.push(`/d/content/${contentType.value}`)
+  }
+  deleting.value = false
+  showDeleteConfirm.value = false
+}
+
 const savingContent = ref(false)
 const contentSaveMsg = ref('')
 const contentSaveErr = ref(false)
@@ -519,6 +549,21 @@ async function saveBody() {
   display: flex; align-items: center; gap: 8px;
 }
 .editor-count { font-weight: 400; font-size: 12px; color: var(--text-3); }
+.btn-danger-sm {
+  font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 10px 20px;
+  border-radius: 6px; border: 1px solid rgba(255, 59, 48, 0.3); background: none;
+  color: #FF3B30; cursor: pointer; transition: all 0.15s;
+}
+.btn-danger-sm:hover { background: rgba(255, 59, 48, 0.08); }
+.btn-danger { font-family: var(--sans); font-size: 13px; font-weight: 600; padding: 10px 20px; border-radius: 6px; border: none; background: #FF3B30; color: white; cursor: pointer; }
+.btn-danger:disabled { opacity: 0.5; }
+.btn-cancel { font-family: var(--sans); font-size: 13px; padding: 10px 20px; border-radius: 6px; border: 1px solid var(--line); background: var(--raised); color: var(--text-2); cursor: pointer; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; }
+.modal { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px; max-width: 400px; width: 90%; }
+.modal-title { font-family: var(--serif); font-size: 18px; color: var(--text); margin: 0 0 12px; }
+.modal-body { font-family: var(--sans); font-size: 14px; color: var(--text-2); line-height: 1.6; margin: 0 0 20px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
 .save-content-btn { margin-top: 12px; }
 .save-content-btn + .save-message { margin-left: 12px; }
 

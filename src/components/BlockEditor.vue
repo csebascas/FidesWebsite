@@ -108,7 +108,10 @@ const blockTypes = [
   { type: 'image', label: 'Image', icon: '▣' },
 ]
 
+let initialized = false
 watch(() => props.modelValue, (val) => {
+  if (initialized) return
+  initialized = true
   blocks.value = (val || []).map((b: any) => ({ ...b, _key: `k${keyCounter++}` }))
 }, { immediate: true })
 

@@ -106,6 +106,10 @@
             <input v-model="createFields.category" class="modal-input" placeholder="e.g. Doctrine, Scripture" />
           </div>
           <div v-if="contentType === 'tracks'" class="modal-field">
+            <label>Track Name</label>
+            <input v-model="createFields.name" class="modal-input" placeholder="Track name" />
+          </div>
+          <div v-if="contentType === 'tracks'" class="modal-field">
             <label>Pillar</label>
             <select v-model="createFields.pillar_id" class="modal-input">
               <option value="">Select a pillar...</option>
@@ -256,11 +260,11 @@ const NEW_DEFAULTS: Record<string, Record<string, any>> = {
   articles: { title: 'Untitled Article', slug: `new-article-${Date.now()}`, type: 'article', summary: 'New article', body: [], published: false },
   entries: { term: 'New Term', type: 'doctrine', definition: 'Definition here' },
   saints: { name: 'New Saint', unlock_method: 'track_completion', rarity: 'common' },
-  tracks: { name: 'New Track', sort_order: 0, active: true },
+  tracks: { name: 'New Track', slug: `new-track-${Date.now()}`, sort_order: 0, active: true, lesson_count: 0 },
   pillars: { name: 'New Pillar', slug: `new-pillar-${Date.now()}`, color: '#C8A55A', sort_order: 0, active: true },
 }
 
-function handleCreate() {
+async function handleCreate() {
   if (contentType.value === 'lessons') {
     createFields.value = { title: '', track_id: '' }
     showCreateModal.value = true
@@ -273,6 +277,11 @@ function handleCreate() {
   }
   if (contentType.value === 'tracks') {
     createFields.value = { name: '', pillar_id: '' }
+    // Load pillar options if not already loaded
+    if (pillarOptions.value.length === 0) {
+      const { data: pillars } = await supabase.from('pillars').select('id, name')
+      pillarOptions.value = (pillars ?? []).sort((a: any, b: any) => a.name.localeCompare(b.name))
+    }
     showCreateModal.value = true
     return
   }
@@ -285,10 +294,14 @@ async function doCreate() {
 
   creating.value = true
   const insertData = { ...defaults, ...createFields.value }
+  // Auto-generate slugs
   if (contentType.value === 'articles') {
     const title = insertData.title || 'untitled'
     insertData.slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now()
     if (!insertData.summary) insertData.summary = insertData.title || 'New article'
+  } else if (contentType.value === 'tracks') {
+    const name = insertData.name || 'new-track'
+    insertData.slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now()
   } else if (contentType.value === 'pillars') {
     insertData.slug = `new-pillar-${Date.now()}`
   }

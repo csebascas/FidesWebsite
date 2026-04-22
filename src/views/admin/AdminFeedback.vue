@@ -25,10 +25,11 @@
               <th>Message</th>
               <th>Version</th>
               <th>Date</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in feedbackItems" :key="item.id">
+            <tr v-for="item in feedbackItems" :key="item.id" :class="{ dismissed: item._dismissed }">
               <td>
                 <router-link v-if="item.user_id" :to="`/d/users?user=${item.user_id}`" class="user-link">
                   {{ item._user_name || 'Anonymous' }}
@@ -39,9 +40,13 @@
               <td class="message-cell">{{ item.message || '—' }}</td>
               <td>{{ item.app_version || '—' }}</td>
               <td>{{ formatDate(item.created_at) }}</td>
+              <td>
+                <button v-if="!item._dismissed" class="review-btn" @click="dismissItem('feedback', item)" title="Mark reviewed">&#10003;</button>
+                <button class="delete-btn" @click="deleteItem('feedback', item)" title="Delete">&#215;</button>
+              </td>
             </tr>
             <tr v-if="feedbackItems.length === 0">
-              <td colspan="5" class="empty">No feedback yet.</td>
+              <td colspan="6" class="empty">No feedback yet.</td>
             </tr>
           </tbody>
         </table>
@@ -112,6 +117,17 @@ const activeTab = ref('feedback')
 const feedbackItems = ref<any[]>([])
 const reportItems = ref<any[]>([])
 const requestItems = ref<any[]>([])
+
+function dismissItem(_table: string, item: any) {
+  item._dismissed = true
+}
+
+async function deleteItem(table: string, item: any) {
+  await adminRpc({ action: 'delete', table, id: item.id })
+  if (table === 'feedback') feedbackItems.value = feedbackItems.value.filter(i => i.id !== item.id)
+  else if (table === 'content_reports') reportItems.value = reportItems.value.filter(i => i.id !== item.id)
+  else if (table === 'topic_requests') requestItems.value = requestItems.value.filter(i => i.id !== item.id)
+}
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '—'
@@ -233,6 +249,17 @@ onMounted(async () => {
 .user-link { color: var(--gold-light); text-decoration: none; }
 .user-link:hover { text-decoration: underline; }
 .text-muted { color: var(--text-3); }
+
+.review-btn, .delete-btn {
+  font-size: 14px; background: none; border: none; cursor: pointer;
+  width: 26px; height: 26px; border-radius: 4px; display: inline-flex;
+  align-items: center; justify-content: center; transition: all 0.15s;
+}
+.review-btn { color: #34C759; }
+.review-btn:hover { background: rgba(52, 199, 89, 0.1); }
+.delete-btn { color: var(--text-3); }
+.delete-btn:hover { color: #FF3B30; background: rgba(255, 59, 48, 0.08); }
+tr.dismissed { opacity: 0.4; }
 
 .id-cell {
   font-family: monospace;
