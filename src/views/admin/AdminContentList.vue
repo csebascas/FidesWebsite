@@ -1,6 +1,11 @@
 <template>
   <div class="content-list">
-    <h1 class="page-title">{{ title }}</h1>
+    <div class="page-header">
+      <h1 class="page-title">{{ title }} <span v-if="rows.length" class="row-count">({{ rows.length }})</span></h1>
+      <button class="btn-gold" @click="handleCreate" :disabled="creating">
+        {{ creating ? 'Creating...' : '+ New' }}
+      </button>
+    </div>
 
     <div class="toolbar">
       <input
@@ -128,6 +133,7 @@ const search = ref('')
 const sortKey = ref('')
 const sortDir = ref<'asc' | 'desc'>('asc')
 const loading = ref(true)
+const creating = ref(false)
 const errorMsg = ref('')
 
 const filteredRows = computed(() => {
@@ -165,6 +171,48 @@ function sortBy(key: string) {
 
 function goToEdit(id: string) {
   router.push(`/d/content/${contentType.value}/${id}`)
+}
+
+const NEW_DEFAULTS: Record<string, Record<string, any>> = {
+  lessons: { title: 'Untitled Lesson', sort_order: 0, active: false },
+  articles: { title: 'Untitled Article', slug: `new-article-${Date.now()}`, type: 'article', summary: '', body: [] },
+  entries: { term: 'New Term', type: 'doctrine', definition: '' },
+  saints: { name: 'New Saint', unlock_method: 'track_completion', rarity: 'common' },
+  tracks: { name: 'New Track', sort_order: 0, active: false },
+  pillars: { name: 'New Pillar', slug: `new-pillar-${Date.now()}`, color: '#C8A55A', sort_order: 0 },
+}
+
+async function handleCreate() {
+  const tableName = TABLE_MAP[contentType.value]
+  const defaults = NEW_DEFAULTS[contentType.value]
+  if (!tableName || !defaults) return
+
+  creating.value = true
+  try {
+    // For articles, generate a unique slug
+    const insertData = { ...defaults }
+    if (contentType.value === 'articles') {
+      insertData.slug = `new-article-${Date.now()}`
+    } else if (contentType.value === 'pillars') {
+      insertData.slug = `new-pillar-${Date.now()}`
+    }
+
+    const { data, error } = await supabase
+      .from(tableName)
+      .insert(insertData)
+      .select('id')
+      .single()
+
+    if (error) {
+      errorMsg.value = `Failed to create: ${error.message}`
+    } else if (data) {
+      router.push(`/d/content/${contentType.value}/${data.id}`)
+    }
+  } catch (e: any) {
+    errorMsg.value = `Error: ${e.message}`
+  } finally {
+    creating.value = false
+  }
 }
 
 async function fetchData() {
@@ -244,13 +292,43 @@ watch(contentType, () => {
   max-width: 1100px;
 }
 
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
 .page-title {
   font-family: var(--serif);
   font-size: 24px;
   color: var(--text);
   font-weight: 700;
-  margin: 0 0 20px;
+  margin: 0;
 }
+
+.row-count {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-3);
+}
+
+.btn-gold {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  background: var(--gold);
+  color: var(--bg);
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+.btn-gold:hover { opacity: 0.9; }
+.btn-gold:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .toolbar {
   margin-bottom: 16px;

@@ -336,6 +336,87 @@
           </div>
         </div>
       </div>
+      <!-- Saint preview -->
+      <div v-if="contentType === 'saints' && item" class="preview-panel">
+        <div class="preview-header">
+          <h3 class="preview-title">Saint Preview</h3>
+        </div>
+        <div class="phone-frame">
+          <div class="phone-content saint-preview">
+            <div class="saint-rarity" :class="item.rarity || 'common'">{{ item.rarity || 'common' }}</div>
+            <h2 class="saint-name">{{ item.name }}</h2>
+            <p v-if="item.title" class="saint-title-text">{{ item.title }}</p>
+
+            <div v-if="item.feast_day || item.feast_month" class="saint-meta">
+              <span class="saint-meta-label">Feast Day</span>
+              <span class="saint-meta-value">{{ item.feast_day || `${item.feast_month}/${item.feast_day_number || '?'}` }}</span>
+            </div>
+            <div v-if="item.born || item.died" class="saint-meta">
+              <span class="saint-meta-label">Lived</span>
+              <span class="saint-meta-value">{{ item.born || '?' }} – {{ item.died || '?' }}</span>
+            </div>
+            <div v-if="item.origin" class="saint-meta">
+              <span class="saint-meta-label">Origin</span>
+              <span class="saint-meta-value">{{ item.origin }}</span>
+            </div>
+            <div v-if="item.patronage" class="saint-meta">
+              <span class="saint-meta-label">Patron of</span>
+              <span class="saint-meta-value">{{ item.patronage }}</span>
+            </div>
+            <div v-if="item.unlock_method" class="saint-meta">
+              <span class="saint-meta-label">Unlock</span>
+              <span class="saint-meta-value">{{ item.unlock_method }}{{ item.unlock_description ? ` — ${item.unlock_description}` : '' }}</span>
+            </div>
+
+            <p v-if="item.short_bio" class="saint-bio">{{ item.short_bio }}</p>
+
+            <blockquote v-if="item.quote" class="saint-quote">
+              "{{ item.quote }}"
+              <span v-if="item.quote_source" class="saint-quote-src">— {{ item.quote_source }}</span>
+            </blockquote>
+
+            <div v-if="item.known_for && item.known_for.length" class="saint-known">
+              <span class="saint-meta-label">Known for</span>
+              <div class="saint-tags">
+                <span v-for="(tag, ti) in item.known_for" :key="ti" class="saint-tag">{{ tag }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Entry (reference) preview -->
+      <div v-if="contentType === 'entries' && item" class="preview-panel">
+        <div class="preview-header">
+          <h3 class="preview-title">Entry Preview</h3>
+        </div>
+        <div class="phone-frame">
+          <div class="phone-content entry-preview">
+            <div class="entry-type-badge">{{ item.type || 'doctrine' }}</div>
+            <h2 class="entry-term">{{ item.term }}</h2>
+            <span v-if="item.category" class="entry-category">{{ item.category }}</span>
+
+            <p class="entry-definition">{{ item.definition }}</p>
+
+            <div v-if="item.ccc_ref" class="entry-ref">
+              <span class="entry-ref-label">CCC</span>
+              <span class="entry-ref-value">{{ item.ccc_ref }}</span>
+            </div>
+
+            <div v-if="item.key_scripture_text" class="ab-scripture">
+              <p class="ab-scripture-text">"{{ item.key_scripture_text }}"</p>
+              <span v-if="item.key_scripture_ref" class="ab-scripture-ref">{{ item.key_scripture_ref }}</span>
+            </div>
+
+            <div v-if="item.related_terms && item.related_terms.length" class="entry-related">
+              <span class="saint-meta-label">Related</span>
+              <div class="saint-tags">
+                <span v-for="(rt, rti) in item.related_terms" :key="rti" class="saint-tag">{{ rt }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -1208,4 +1289,175 @@ async function handleSave() {
   border: 1px dashed var(--line);
   border-radius: 4px;
 }
+
+/* ─── Saint Preview ─── */
+.saint-preview { min-height: auto; }
+
+.saint-rarity {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-bottom: 12px;
+}
+.saint-rarity.common { background: var(--surface); color: var(--text-3); }
+.saint-rarity.uncommon { background: rgba(52, 199, 89, 0.12); color: #34C759; }
+.saint-rarity.rare { background: rgba(0, 122, 255, 0.12); color: #007AFF; }
+.saint-rarity.legendary { background: rgba(200, 165, 90, 0.15); color: var(--gold-light); }
+
+.saint-name {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 4px;
+}
+
+.saint-title-text {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text-3);
+  font-style: italic;
+  margin: 0 0 16px;
+}
+
+.saint-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.saint-meta-label {
+  font-family: var(--sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-3);
+  flex-shrink: 0;
+}
+
+.saint-meta-value {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text-2);
+  text-align: right;
+}
+
+.saint-bio {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-2);
+  margin: 16px 0 0;
+}
+
+.saint-quote {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  border-left: 2px solid var(--gold);
+  padding-left: 14px;
+  margin: 16px 0 0;
+}
+
+.saint-quote-src {
+  display: block;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-3);
+  font-style: italic;
+  margin-top: 6px;
+}
+
+.saint-known { margin-top: 16px; }
+
+.saint-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.saint-tag {
+  font-family: var(--sans);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-2);
+}
+
+/* ─── Entry Preview ─── */
+.entry-preview { min-height: auto; }
+
+.entry-type-badge {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold-light);
+  margin-bottom: 8px;
+}
+
+.entry-term {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+
+.entry-category {
+  font-family: var(--sans);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-3);
+  display: inline-block;
+  margin-bottom: 14px;
+}
+
+.entry-definition {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-2);
+  margin: 0 0 14px;
+}
+
+.entry-ref {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.entry-ref-label {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gold-light);
+  background: rgba(200, 165, 90, 0.12);
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+.entry-ref-value {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.entry-related { margin-top: 14px; }
 </style>

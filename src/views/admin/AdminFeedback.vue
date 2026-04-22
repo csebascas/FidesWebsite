@@ -20,17 +20,17 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>User</th>
+              <th>Category</th>
               <th>Message</th>
-              <th>Screen</th>
+              <th>Version</th>
               <th>Date</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in feedbackItems" :key="item.id">
-              <td>{{ item.user_email || item.user_id || '—' }}</td>
-              <td>{{ item.message || '—' }}</td>
-              <td>{{ item.screen || '—' }}</td>
+              <td><span class="category-badge">{{ item.category || '—' }}</span></td>
+              <td class="message-cell">{{ item.message || '—' }}</td>
+              <td>{{ item.app_version || '—' }}</td>
               <td>{{ formatDate(item.created_at) }}</td>
             </tr>
             <tr v-if="feedbackItems.length === 0">
@@ -45,19 +45,19 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Content</th>
-              <th>Type</th>
+              <th>Content Type</th>
+              <th>Content ID</th>
               <th>Reason</th>
-              <th>Reporter</th>
+              <th>Details</th>
               <th>Date</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in reportItems" :key="item.id">
-              <td>{{ item.content_title || item.content_id || '—' }}</td>
-              <td>{{ item.content_type || '—' }}</td>
+              <td><span class="category-badge">{{ item.content_type || '—' }}</span></td>
+              <td class="id-cell">{{ item.content_id || '—' }}</td>
               <td>{{ item.reason || '—' }}</td>
-              <td>{{ item.reporter_email || item.reporter_id || '—' }}</td>
+              <td class="message-cell">{{ item.details || '—' }}</td>
               <td>{{ formatDate(item.created_at) }}</td>
             </tr>
             <tr v-if="reportItems.length === 0">
@@ -72,21 +72,17 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>Topic</th>
-              <th>Votes</th>
-              <th>Requester</th>
+              <th>Query</th>
               <th>Date</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in requestItems" :key="item.id">
-              <td>{{ item.topic || '—' }}</td>
-              <td>{{ item.votes ?? 0 }}</td>
-              <td>{{ item.requester_email || item.requester_id || '—' }}</td>
+              <td>{{ item.query || '—' }}</td>
               <td>{{ formatDate(item.created_at) }}</td>
             </tr>
             <tr v-if="requestItems.length === 0">
-              <td colspan="4" class="empty">No requests yet.</td>
+              <td colspan="2" class="empty">No requests yet.</td>
             </tr>
           </tbody>
         </table>
@@ -96,7 +92,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { supabase } from '../../lib/supabase'
 
 const tabs = [
   { key: 'feedback', label: 'User Feedback' },
@@ -118,9 +115,16 @@ function formatDate(dateStr: string): string {
   })
 }
 
-// Feedback tables don't exist yet — this page is a placeholder.
-// When user_feedback, content_reports, topic_requests tables are created,
-// wire up a dedicated /api/feedback endpoint.
+onMounted(async () => {
+  const [fb, reports, requests] = await Promise.all([
+    supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(100),
+    supabase.from('content_reports').select('*').order('created_at', { ascending: false }).limit(100),
+    supabase.from('topic_requests').select('*').order('created_at', { ascending: false }).limit(100),
+  ])
+  feedbackItems.value = fb.data ?? []
+  reportItems.value = reports.data ?? []
+  requestItems.value = requests.data ?? []
+})
 </script>
 
 <style scoped>
@@ -193,5 +197,28 @@ function formatDate(dateStr: string): string {
   text-align: center;
   color: var(--text-3);
   padding: 32px 12px;
+}
+
+.category-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-2);
+  text-transform: capitalize;
+}
+
+.message-cell {
+  max-width: 400px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.id-cell {
+  font-family: monospace;
+  font-size: 11px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
