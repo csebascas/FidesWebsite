@@ -144,6 +144,11 @@
         </div>
         <div class="phone-frame">
           <div class="phone-content article-preview">
+            <div class="article-header">
+              <span v-if="item?.category" class="article-category">{{ item.category }}</span>
+              <h2 class="article-title-preview">{{ item?.title || 'Untitled' }}</h2>
+              <span v-if="item?.type" class="article-type-badge">{{ item.type }}</span>
+            </div>
             <div v-for="(block, i) in blocks" :key="i" class="article-block">
               <template v-if="block.type === 'heading'">
                 <h3 class="ab-heading">{{ block.text }}</h3>
@@ -154,6 +159,12 @@
               <template v-else-if="block.type === 'quote'">
                 <blockquote class="ab-quote">"{{ block.text }}"</blockquote>
               </template>
+              <template v-else-if="block.type === 'image'">
+                <div class="ab-image">
+                  <div class="ab-image-placeholder">Image: {{ block.alt || block.url || '' }}</div>
+                  <span v-if="block.caption" class="ab-image-caption">{{ block.caption }}</span>
+                </div>
+              </template>
               <template v-else-if="block.type === 'scripture'">
                 <div class="ab-scripture">
                   <p class="ab-scripture-text">"{{ block.text }}"</p>
@@ -162,6 +173,11 @@
               </template>
               <template v-else-if="block.type === 'callout'">
                 <div class="ab-callout">{{ block.text }}</div>
+              </template>
+              <template v-else-if="block.type === 'list'">
+                <ul class="ab-list">
+                  <li v-for="(li, li_i) in (block.items || [])" :key="li_i">{{ li }}</li>
+                </ul>
               </template>
               <template v-else>
                 <div class="ab-generic">[{{ block.type }}] {{ block.text || '' }}</div>
@@ -209,23 +225,24 @@ onMounted(async () => {
   try {
     const res = await fetch(`/api/content/${contentType.value}/${contentId.value}`)
     if (res.ok) {
-      const data = await res.json()
-      item.value = data
+      const json = await res.json()
+      const row = json.data ?? json
+      item.value = row
 
       // Extract lesson steps
-      if (contentType.value === 'lessons' && data.content) {
-        const content = typeof data.content === 'string' ? JSON.parse(data.content) : data.content
+      if (contentType.value === 'lessons' && row.content) {
+        const content = typeof row.content === 'string' ? JSON.parse(row.content) : row.content
         steps.value = Array.isArray(content) ? content : (content.steps || [])
       }
 
       // Extract article blocks
-      if (contentType.value === 'articles' && data.body) {
-        const body = typeof data.body === 'string' ? JSON.parse(data.body) : data.body
+      if (contentType.value === 'articles' && row.body) {
+        const body = typeof row.body === 'string' ? JSON.parse(row.body) : row.body
         blocks.value = Array.isArray(body) ? body : []
       }
 
       // Populate editable fields (exclude complex nested objects)
-      for (const [key, val] of Object.entries(data)) {
+      for (const [key, val] of Object.entries(row)) {
         if (['id', 'content', 'body', 'steps'].includes(key)) continue
         if (typeof val === 'object' && val !== null && !Array.isArray(val)) continue
         if (Array.isArray(val)) continue
@@ -576,6 +593,46 @@ async function handleSave() {
 /* ─── Article Preview ─── */
 .article-preview {
   min-height: auto;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.article-header {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.article-category {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold-light);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.article-title-preview {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.25;
+  margin: 0 0 8px;
+}
+
+.article-type-badge {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-3);
+  background: var(--surface);
+  padding: 3px 8px;
+  border-radius: 4px;
 }
 
 .article-block { margin-bottom: 16px; }
@@ -604,6 +661,29 @@ async function handleSave() {
   border-left: 2px solid var(--gold);
   padding-left: 14px;
   margin: 0;
+}
+
+.ab-image {
+  text-align: center;
+}
+
+.ab-image-placeholder {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--text-3);
+  background: var(--surface);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 32px 16px;
+}
+
+.ab-image-caption {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 6px;
+  display: block;
+  font-style: italic;
 }
 
 .ab-scripture {
@@ -635,6 +715,19 @@ async function handleSave() {
   border-left: 2px solid var(--gold);
   padding: 12px 14px;
   border-radius: 0 6px 6px 0;
+}
+
+.ab-list {
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-2);
+  margin: 0;
+  padding-left: 20px;
+}
+
+.ab-list li {
+  margin-bottom: 4px;
 }
 
 .ab-generic {

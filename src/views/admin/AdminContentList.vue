@@ -39,7 +39,7 @@
               <template v-if="col.key === 'color'">
                 <span class="color-dot" :style="{ background: row[col.key] }"></span>
               </template>
-              <template v-else-if="col.key === 'active' || col.key === 'published' || col.key === 'featured'">
+              <template v-else-if="col.key === 'active' || col.key === 'published' || col.key === 'featured' || col.key === 'is_featured'">
                 <span class="bool-badge" :class="row[col.key] ? 'yes' : 'no'">
                   {{ row[col.key] ? 'Yes' : 'No' }}
                 </span>
@@ -57,6 +57,7 @@
     </div>
 
     <div v-if="loading" class="loading-text">Loading...</div>
+    <div v-if="errorMsg" class="error-text">{{ errorMsg }}</div>
   </div>
 </template>
 
@@ -98,7 +99,7 @@ const columnMap: Record<string, Column[]> = {
     { key: 'term', label: 'Term' },
     { key: 'type', label: 'Type' },
     { key: 'category', label: 'Category' },
-    { key: 'featured', label: 'Featured' },
+    { key: 'is_featured', label: 'Featured' },
   ],
   saints: [
     { key: 'name', label: 'Name' },
@@ -126,6 +127,7 @@ const search = ref('')
 const sortKey = ref('')
 const sortDir = ref<'asc' | 'desc'>('asc')
 const loading = ref(true)
+const errorMsg = ref('')
 
 const filteredRows = computed(() => {
   let result = rows.value
@@ -167,6 +169,7 @@ function goToEdit(id: string) {
 async function fetchData() {
   loading.value = true
   rows.value = []
+  errorMsg.value = ''
   try {
     const res = await fetch(`/api/content/${contentType.value}`)
     if (res.ok) {
@@ -191,10 +194,10 @@ async function fetchData() {
       })
     } else {
       const err = await res.json().catch(() => ({}))
-      console.error('Content fetch error:', err)
+      errorMsg.value = `Failed to load: ${err.error || res.statusText}`
     }
-  } catch {
-    // ignore
+  } catch (e: any) {
+    errorMsg.value = `Network error: ${e.message || 'could not reach API'}`
   } finally {
     loading.value = false
   }
@@ -334,5 +337,15 @@ watch(contentType, () => {
   font-size: 13px;
   color: var(--text-3);
   margin-top: 16px;
+}
+
+.error-text {
+  font-family: var(--sans);
+  font-size: 13px;
+  color: var(--streak, #FF3B30);
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 59, 48, 0.08);
+  border-radius: 6px;
 }
 </style>

@@ -4,6 +4,11 @@ import { getAdminClient } from '../../_lib/supabase.js';
 
 const VALID_TYPES = ['lessons', 'articles', 'entries', 'saints', 'tracks', 'pillars'];
 
+/** Map URL type param to actual DB table name. */
+const TABLE_MAP: Record<string, string> = {
+  entries: 'reference_entries',
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'PUT') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -25,9 +30,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const supabase = getAdminClient();
+  const tableName = TABLE_MAP[typeStr] || typeStr;
 
   if (req.method === 'GET') {
-    const { data, error } = await supabase.from(typeStr).select('*').eq('id', idStr).single();
+    const { data, error } = await supabase.from(tableName).select('*').eq('id', idStr).single();
 
     if (error) {
       return res.status(error.code === 'PGRST116' ? 404 : 500).json({ error: error.message });
@@ -46,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     delete updates.id;
     delete updates.created_at;
 
-    const { data, error } = await supabase.from(typeStr).update(updates).eq('id', idStr).select('*').single();
+    const { data, error } = await supabase.from(tableName).update(updates).eq('id', idStr).select('*').single();
 
     if (error) {
       return res.status(500).json({ error: error.message });

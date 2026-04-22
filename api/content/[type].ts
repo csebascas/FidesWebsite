@@ -2,49 +2,38 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyAdmin } from '../_lib/auth.js';
 import { getAdminClient } from '../_lib/supabase.js';
 
+/** Fields to exclude from list responses (large JSON blobs). */
+const HEAVY_FIELDS = ['content', 'body', 'steps', 'blocks'];
+
 interface TypeConfig {
   table: string;
-  select: string;
   searchFields: string[];
-  orderBy: string;
 }
 
 const TYPE_CONFIGS: Record<string, TypeConfig> = {
   lessons: {
     table: 'lessons',
-    select: 'id, title, subtitle, track_id, xp_reward, active, sort_order',
     searchFields: ['title', 'subtitle'],
-    orderBy: 'sort_order',
   },
   articles: {
     table: 'articles',
-    select: 'id, title, slug, type, category, published, featured, created_at',
     searchFields: ['title', 'slug'],
-    orderBy: 'created_at',
   },
   entries: {
-    table: 'entries',
-    select: 'id, term, type, category, featured, wotd_date, created_at',
+    table: 'reference_entries',
     searchFields: ['term'],
-    orderBy: 'created_at',
   },
   saints: {
     table: 'saints',
-    select: 'id, name, feast_month, feast_day_number, rarity, unlock_method, sort_order',
     searchFields: ['name'],
-    orderBy: 'sort_order',
   },
   tracks: {
     table: 'tracks',
-    select: 'id, name, pillar_id, is_free, active, lesson_count, sort_order',
     searchFields: ['name'],
-    orderBy: 'sort_order',
   },
   pillars: {
     table: 'pillars',
-    select: 'id, name, slug, color, sort_order, active',
     searchFields: ['name', 'slug'],
-    orderBy: 'sort_order',
   },
 };
 
@@ -67,56 +56,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabase = getAdminClient();
   const search = req.query.search as string | undefined;
 
-  let query = supabase.from(config.table).select(config.select);
+  let query = supabase.from(config.table).select('*');
 
   if (search) {
     const orFilter = config.searchFields.map((f) => `${f}.ilike.%${search}%`).join(',');
     query = query.or(orFilter);
   }
 
-  const { data, error } = await query.order(config.orderBy, { ascending: true }).limit(500);
+  const { data, error } = await query.limit(500);
 
   if (error) {
     return res.status(500).json({ error: error.message, details: error });
   }
 
+  // Strip heavy fields from list responses
+  const rows = (data ?? []).map((row: any) => {
+    const clean = { ...row };
+    for (const field of HEAVY_FIELDS) {
+      delete clean[field];
+    }
+    return clean;
+  });
+
   // Enrich lessons with track/pillar names via separate lookups
-  if (typeStr === 'lessons' && data && data.length > 0) {
-    const trackIds = [...new Set(data.map((l: any) => l.track_id).filter(Boolean))];
-    const { data: tracks } = await supabase
-      .from('tracks')
-      .select('id, name, pillar_id')
-      .in('id', trackIds);
+  if (typeStr === 'lessons' && rows.length > 0) {
+    const trackIds = [...new Set(rows.map((l: any) => l.track_id).filter(Boolean))];
+    if (trackIds.length > 0) {
+      const { data: tracks } = await supabase
+        .from('tracks')
+        .select('id, name, pillar_id')
+        .in('id', trackIds);
 
-    const pillarIds = [...new Set((tracks ?? []).map((t: any) => t.pillar_id).filter(Boolean))];
-    const { data: pillars } = await supabase
-      .from('pillars')
-      .select('id, name')
-      .in('id', pillarIds);
+      const pillarIds = [...new Set((tracks ?? []).map((t: any) => t.pillar_id).filter(Boolean))];
+      let pillarMap: Record<string, string> = {};
+      if (pillarIds.length > 0) {
+        const { data: pillars } = await supabase
+          .from('pillars')
+          .select('id, name')
+          .in('id', pillarIds);
+        pillarMap = Object.fromEntries((pillars ?? []).map((p: any) => [p.id, p.name]));
+      }
 
-    const trackMap = Object.fromEntries((tracks ?? []).map((t: any) => [t.id, t]));
-    const pillarMap = Object.fromEntries((pillars ?? []).map((p: any) => [p.id, p.name]));
+      const trackMap = Object.fromEntries((tracks ?? []).map((t: any) => [t.id, t]));
 
-    for (const lesson of data as any[]) {
-      const track = trackMap[lesson.track_id];
-      lesson._track_name = track?.name ?? null;
-      lesson._pillar_name = track ? (pillarMap[track.pillar_id] ?? null) : null;
+      for (const lesson of rows) {
+        const track = trackMap[lesson.track_id];
+        lesson._track_name = track?.name ?? null;
+        lesson._pillar_name = track ? (pillarMap[track.pillar_id] ?? null) : null;
+      }
     }
   }
 
   // Enrich tracks with pillar names
-  if (typeStr === 'tracks' && data && data.length > 0) {
-    const pillarIds = [...new Set(data.map((t: any) => t.pillar_id).filter(Boolean))];
-    const { data: pillars } = await supabase
-      .from('pillars')
-      .select('id, name')
-      .in('id', pillarIds);
+  if (typeStr === 'tracks' && rows.length > 0) {
+    const pillarIds = [...new Set(rows.map((t: any) => t.pillar_id).filter(Boolean))];
+    if (pillarIds.length > 0) {
+      const { data: pillars } = await supabase
+        .from('pillars')
+        .select('id, name')
+        .in('id', pillarIds);
 
-    const pillarMap = Object.fromEntries((pillars ?? []).map((p: any) => [p.id, p.name]));
-    for (const track of data as any[]) {
-      track._pillar_name = pillarMap[track.pillar_id] ?? null;
+      const pillarMap = Object.fromEntries((pillars ?? []).map((p: any) => [p.id, p.name]));
+      for (const track of rows) {
+        track._pillar_name = pillarMap[track.pillar_id] ?? null;
+      }
     }
   }
 
-  return res.status(200).json({ data });
+  return res.status(200).json({ data: rows });
 }
