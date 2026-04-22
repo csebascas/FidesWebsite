@@ -57,212 +57,164 @@
           <div class="phone-status">
             <span class="step-progress">{{ currentStep + 1 }} / {{ steps.length }}</span>
           </div>
-          <div class="phone-content">
-            <div class="step-type-badge">{{ steps[currentStep]?.type || 'unknown' }}</div>
-            <div class="step-preview-content" v-if="steps[currentStep]">
-              <!-- Concept -->
-              <template v-if="steps[currentStep].type === 'concept'">
-                <h2 class="preview-heading">{{ steps[currentStep].title }}</h2>
-                <p class="preview-body">{{ steps[currentStep].body }}</p>
-                <p v-if="steps[currentStep].source" class="preview-source">— {{ steps[currentStep].source }}</p>
-              </template>
-
-              <!-- Quote -->
-              <template v-else-if="steps[currentStep].type === 'quote'">
-                <blockquote class="preview-quote">"{{ steps[currentStep].text }}"</blockquote>
-                <p class="preview-source">— {{ steps[currentStep].attribution }}</p>
-              </template>
-
-              <!-- True/False -->
-              <template v-else-if="steps[currentStep].type === 'truefalse'">
-                <p class="preview-question">{{ steps[currentStep].statement }}</p>
+          <div class="phone-content" v-if="step">
+            <div class="step-type-badge">{{ stepType }}</div>
+            <div class="step-preview-content">
+              <div v-if="stepType === 'concept'">
+                <h2 class="preview-heading">{{ step.title }}</h2>
+                <p class="preview-body">{{ step.body }}</p>
+                <p v-if="step.source" class="preview-source">— {{ step.source }}</p>
+              </div>
+              <div v-else-if="stepType === 'quote'">
+                <blockquote class="preview-quote">"{{ step.text }}"</blockquote>
+                <p class="preview-source">— {{ step.attribution }}</p>
+              </div>
+              <div v-else-if="stepType === 'truefalse'">
+                <p class="preview-question">{{ step.statement }}</p>
                 <div class="preview-options">
-                  <div class="preview-option" :class="{ correct: steps[currentStep].isTrue }">True</div>
-                  <div class="preview-option" :class="{ correct: !steps[currentStep].isTrue }">False</div>
+                  <div class="preview-option" :class="{ correct: step.isTrue }">True</div>
+                  <div class="preview-option" :class="{ correct: !step.isTrue }">False</div>
                 </div>
-                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
-              </template>
-
-              <!-- Question / Scenario / Doctrine-Life -->
-              <template v-else-if="steps[currentStep].type === 'question' || steps[currentStep].type === 'scenario' || steps[currentStep].type === 'doctrine-life'">
-                <p v-if="steps[currentStep].scenario" class="preview-body scenario-text">{{ steps[currentStep].scenario }}</p>
-                <p class="preview-question">{{ steps[currentStep].question || steps[currentStep].prompt }}</p>
+                <p v-if="step.explanation" class="preview-explanation">{{ step.explanation }}</p>
+              </div>
+              <div v-else-if="stepType === 'question' || stepType === 'scenario' || stepType === 'doctrine-life'">
+                <p v-if="step.scenario" class="preview-body scenario-text">{{ step.scenario }}</p>
+                <p class="preview-question">{{ step.question || step.prompt }}</p>
                 <div class="preview-options">
-                  <div
-                    v-for="(opt, oi) in (steps[currentStep].options || [])"
-                    :key="oi"
-                    class="preview-option"
-                    :class="{ correct: opt.isCorrect || opt === steps[currentStep].correct_answer || (steps[currentStep].correct_index !== undefined && oi === steps[currentStep].correct_index) }"
-                  >
-                    {{ typeof opt === 'string' ? opt : opt.text || opt.label || '' }}
+                  <div v-for="(opt, oi) in (step.options || [])" :key="oi" class="preview-option" :class="{ correct: opt.isCorrect }">
+                    {{ typeof opt === 'string' ? opt : opt.text || '' }}
                   </div>
                 </div>
-                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
-              </template>
-
-              <!-- Before-After -->
-              <template v-else-if="steps[currentStep].type === 'before-after'">
+                <p v-if="step.explanation" class="preview-explanation">{{ step.explanation }}</p>
+              </div>
+              <div v-else-if="stepType === 'before-after'">
                 <div class="before-after-card wrong">
-                  <span class="ba-label">{{ steps[currentStep].misconceptionLabel || 'Misconception' }}</span>
-                  <p class="ba-text">{{ steps[currentStep].misconception }}</p>
+                  <span class="ba-label">{{ step.misconceptionLabel || 'Misconception' }}</span>
+                  <p class="ba-text">{{ step.misconception }}</p>
                 </div>
                 <div class="before-after-card right">
-                  <span class="ba-label">{{ steps[currentStep].truthLabel || 'Truth' }}</span>
-                  <p class="ba-text">{{ steps[currentStep].truth }}</p>
+                  <span class="ba-label">{{ step.truthLabel || 'Truth' }}</span>
+                  <p class="ba-text">{{ step.truth }}</p>
                 </div>
-              </template>
-
-              <!-- Match -->
-              <template v-else-if="steps[currentStep].type === 'match' || steps[currentStep].type === 'quotematch'">
-                <p v-if="steps[currentStep].instruction" class="preview-body">{{ steps[currentStep].instruction }}</p>
-                <div v-for="pair in (steps[currentStep].pairs || [])" :key="pair.id" class="match-pair">
+              </div>
+              <div v-else-if="stepType === 'match' || stepType === 'quotematch'">
+                <p v-if="step.instruction" class="preview-body">{{ step.instruction }}</p>
+                <div v-for="pair in (step.pairs || [])" :key="pair.id" class="match-pair">
                   <div class="match-left">{{ pair.left || pair.quote }}</div>
                   <div class="match-right">{{ pair.right || pair.match }}</div>
                 </div>
-                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
-              </template>
-
-              <!-- Stat -->
-              <template v-else-if="steps[currentStep].type === 'stat'">
+                <p v-if="step.explanation" class="preview-explanation">{{ step.explanation }}</p>
+              </div>
+              <div v-else-if="stepType === 'stat'">
                 <div class="stat-display">
-                  <span class="stat-value">{{ steps[currentStep].stat }}</span>
-                  <span class="stat-label-text">{{ steps[currentStep].label }}</span>
+                  <span class="stat-value">{{ step.stat }}</span>
+                  <span class="stat-label-text">{{ step.label }}</span>
                 </div>
-                <p class="preview-body">{{ steps[currentStep].body }}</p>
-                <p v-if="steps[currentStep].source" class="preview-source">— {{ steps[currentStep].source }}</p>
-              </template>
-
-              <!-- Scripture -->
-              <template v-else-if="steps[currentStep].type === 'scripture'">
-                <p class="scripture-ref">{{ steps[currentStep].reference }}</p>
-                <div v-for="(v, vi) in (steps[currentStep].verses || [])" :key="vi" class="scripture-verse">
+                <p class="preview-body">{{ step.body }}</p>
+                <p v-if="step.source" class="preview-source">— {{ step.source }}</p>
+              </div>
+              <div v-else-if="stepType === 'scripture'">
+                <p class="scripture-ref">{{ step.reference }}</p>
+                <div v-for="(v, vi) in (step.verses || [])" :key="vi" class="scripture-verse">
                   <span class="verse-num">{{ v.number }}</span>
                   <span class="verse-text">{{ v.text }}</span>
                   <p v-if="v.annotation" class="verse-annotation">{{ v.annotation }}</p>
                 </div>
-              </template>
-
-              <!-- Vocabulary -->
-              <template v-else-if="steps[currentStep].type === 'vocabulary'">
-                <h2 class="preview-heading">{{ steps[currentStep].term }}</h2>
-                <p class="preview-body">{{ steps[currentStep].definition }}</p>
-                <p v-if="steps[currentStep].etymology" class="preview-source">{{ steps[currentStep].etymology }}</p>
-                <div v-if="steps[currentStep].context" class="vocab-example">{{ steps[currentStep].context }}</div>
-                <div v-if="steps[currentStep].example" class="vocab-example">{{ steps[currentStep].example }}</div>
-              </template>
-
-              <!-- Storyboard -->
-              <template v-else-if="steps[currentStep].type === 'storyboard'">
-                <p v-if="steps[currentStep].eyebrow" class="step-eyebrow">{{ steps[currentStep].eyebrow }}</p>
-                <div v-for="(panel, pi) in (steps[currentStep].panels || [])" :key="pi" class="storyboard-panel">
+              </div>
+              <div v-else-if="stepType === 'vocabulary'">
+                <h2 class="preview-heading">{{ step.term }}</h2>
+                <p class="preview-body">{{ step.definition }}</p>
+                <p v-if="step.etymology" class="preview-source">{{ step.etymology }}</p>
+                <div v-if="step.context" class="vocab-example">{{ step.context }}</div>
+                <div v-if="step.example" class="vocab-example">{{ step.example }}</div>
+              </div>
+              <div v-else-if="stepType === 'storyboard'">
+                <p v-if="step.eyebrow" class="step-eyebrow">{{ step.eyebrow }}</p>
+                <div v-for="(panel, pi) in (step.panels || [])" :key="pi" class="storyboard-panel">
                   <h3 v-if="panel.title" class="panel-title">{{ panel.title }}</h3>
                   <p class="panel-body">{{ typeof panel === 'string' ? panel : panel.body }}</p>
                 </div>
-              </template>
-
-              <!-- Interpretations -->
-              <template v-else-if="steps[currentStep].type === 'interpretations'">
-                <blockquote v-if="steps[currentStep].passage" class="preview-quote">"{{ steps[currentStep].passage }}"</blockquote>
-                <div v-for="(view, vi) in (steps[currentStep].views || [])" :key="vi" class="interp-view">
+              </div>
+              <div v-else-if="stepType === 'interpretations'">
+                <blockquote v-if="step.passage" class="preview-quote">"{{ step.passage }}"</blockquote>
+                <div v-for="(view, vi) in (step.views || [])" :key="vi" class="interp-view">
                   <span class="interp-label">{{ view.label }}</span>
                   <p class="interp-text">{{ view.interpretation }}</p>
                 </div>
-              </template>
-
-              <!-- Fill Blank -->
-              <template v-else-if="steps[currentStep].type === 'fillblank'">
+              </div>
+              <div v-else-if="stepType === 'fillblank'">
                 <p class="preview-question">
-                  <template v-for="(tok, ti) in (steps[currentStep].tokens || [])" :key="ti">
+                  <template v-for="(tok, ti) in (step.tokens || [])" :key="ti">
                     <span v-if="tok.isBlank" class="fill-blank">{{ tok.text }}</span>
                     <span v-else>{{ tok.text }}</span>
                   </template>
                 </p>
-                <div v-if="steps[currentStep].wordBank" class="preview-options">
-                  <div v-for="(w, wi) in steps[currentStep].wordBank" :key="wi" class="preview-option">{{ w }}</div>
+                <div v-if="step.wordBank" class="preview-options">
+                  <div v-for="(w, wi) in step.wordBank" :key="wi" class="preview-option">{{ w }}</div>
                 </div>
-                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
-              </template>
-
-              <!-- Tap Word -->
-              <template v-else-if="steps[currentStep].type === 'tapword'">
-                <p v-if="steps[currentStep].instruction" class="preview-body">{{ steps[currentStep].instruction }}</p>
+                <p v-if="step.explanation" class="preview-explanation">{{ step.explanation }}</p>
+              </div>
+              <div v-else-if="stepType === 'tapword'">
+                <p v-if="step.instruction" class="preview-body">{{ step.instruction }}</p>
                 <div class="tapword-grid">
-                  <span v-for="tok in (steps[currentStep].tokens || [])" :key="tok.id" class="tapword-chip" :class="{ target: tok.isTarget }">{{ tok.text }}</span>
+                  <span v-for="tok in (step.tokens || [])" :key="tok.id" class="tapword-chip" :class="{ target: tok.isTarget }">{{ tok.text }}</span>
                 </div>
-                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
-              </template>
-
-              <!-- Order / Rank -->
-              <template v-else-if="steps[currentStep].type === 'order' || steps[currentStep].type === 'rank'">
-                <p v-if="steps[currentStep].instruction" class="preview-body">{{ steps[currentStep].instruction }}</p>
+                <p v-if="step.explanation" class="preview-explanation">{{ step.explanation }}</p>
+              </div>
+              <div v-else-if="stepType === 'order' || stepType === 'rank'">
+                <p v-if="step.instruction" class="preview-body">{{ step.instruction }}</p>
                 <div class="preview-options">
-                  <div v-for="(item, ii) in (steps[currentStep].items || [])" :key="item.id || ii" class="preview-option order-item">
-                    <span class="order-num">{{ ii + 1 }}</span> {{ item.text }}
+                  <div v-for="(itm, ii) in (step.items || [])" :key="itm.id || ii" class="preview-option order-item">
+                    <span class="order-num">{{ ii + 1 }}</span> {{ itm.text }}
                   </div>
                 </div>
-                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
-              </template>
-
-              <!-- Painting -->
-              <template v-else-if="steps[currentStep].type === 'painting'">
-                <div v-if="steps[currentStep].artwork" class="painting-header">
-                  <h2 class="preview-heading">{{ steps[currentStep].artwork.title }}</h2>
-                  <p class="preview-source">{{ steps[currentStep].artwork.artist }}, {{ steps[currentStep].artwork.year }}</p>
-                  <img v-if="steps[currentStep].artwork.image_url" :src="steps[currentStep].artwork.image_url" :alt="steps[currentStep].artwork.title" class="painting-img" />
-                  <p v-if="steps[currentStep].artwork.caption" class="preview-source">{{ steps[currentStep].artwork.caption }}</p>
+                <p v-if="step.explanation" class="preview-explanation">{{ step.explanation }}</p>
+              </div>
+              <div v-else-if="stepType === 'painting'">
+                <div v-if="step.artwork" class="painting-header">
+                  <h2 class="preview-heading">{{ step.artwork.title }}</h2>
+                  <p class="preview-source">{{ step.artwork.artist }}, {{ step.artwork.year }}</p>
+                  <img v-if="step.artwork.image_url" :src="step.artwork.image_url" :alt="step.artwork.title" class="painting-img" />
+                  <p v-if="step.artwork.caption" class="preview-source">{{ step.artwork.caption }}</p>
                 </div>
-                <div v-for="(panel, pi) in (steps[currentStep].panels || [])" :key="pi">
+                <div v-for="(panel, pi) in (step.panels || [])" :key="pi">
                   <p class="preview-body">{{ panel }}</p>
                 </div>
-              </template>
-
-              <!-- Fear-Reassurance -->
-              <template v-else-if="steps[currentStep].type === 'fear-reassurance'">
+              </div>
+              <div v-else-if="stepType === 'fear-reassurance'">
                 <div class="before-after-card wrong">
                   <span class="ba-label">Fear</span>
-                  <p class="ba-text">{{ steps[currentStep].fear }}</p>
+                  <p class="ba-text">{{ step.fear }}</p>
                 </div>
                 <div class="before-after-card right">
                   <span class="ba-label">Reassurance</span>
-                  <p class="ba-text">{{ steps[currentStep].reassurance }}</p>
+                  <p class="ba-text">{{ step.reassurance }}</p>
                 </div>
-                <p v-if="steps[currentStep].theologicalBasis" class="preview-explanation">{{ steps[currentStep].theologicalBasis }}</p>
-              </template>
-
-              <!-- Concept Map -->
-              <template v-else-if="steps[currentStep].type === 'conceptmap'">
-                <h2 v-if="steps[currentStep].title" class="preview-heading">{{ steps[currentStep].title }}</h2>
-                <div v-for="(node, ni) in (steps[currentStep].nodes || [])" :key="ni" class="concept-node">
+                <p v-if="step.theologicalBasis" class="preview-explanation">{{ step.theologicalBasis }}</p>
+              </div>
+              <div v-else-if="stepType === 'conceptmap'">
+                <h2 v-if="step.title" class="preview-heading">{{ step.title }}</h2>
+                <div v-for="(node, ni) in (step.nodes || [])" :key="ni" class="concept-node">
                   <span class="concept-label">{{ node.label }}</span>
                   <p class="concept-desc">{{ node.description }}</p>
                 </div>
-              </template>
-
-              <!-- Witness -->
-              <template v-else-if="steps[currentStep].type === 'witness'">
-                <p class="preview-body">{{ steps[currentStep].body }}</p>
-                <p class="preview-source">— {{ steps[currentStep].name }}</p>
-                <p v-if="steps[currentStep].summary" class="preview-explanation">{{ steps[currentStep].summary }}</p>
-              </template>
-
-              <!-- Explanation -->
-              <template v-else-if="steps[currentStep].type === 'explanation'">
-                <h2 class="preview-heading">{{ steps[currentStep].title }}</h2>
-                <p class="preview-body">{{ steps[currentStep].body }}</p>
-              </template>
-
-              <!-- XP Award -->
-              <template v-else-if="steps[currentStep].type === 'xp-award'">
+              </div>
+              <div v-else-if="stepType === 'witness'">
+                <p class="preview-body">{{ step.body }}</p>
+                <p class="preview-source">— {{ step.name }}</p>
+                <p v-if="step.summary" class="preview-explanation">{{ step.summary }}</p>
+              </div>
+              <div v-else-if="stepType === 'explanation'">
+                <h2 class="preview-heading">{{ step.title }}</h2>
+                <p class="preview-body">{{ step.body }}</p>
+              </div>
+              <div v-else-if="stepType === 'xp-award'">
                 <div class="preview-xp">
-                  <span class="xp-number">+{{ steps[currentStep].xp || 0 }}</span>
+                  <span class="xp-number">+{{ step.xp || 0 }}</span>
                   <span class="xp-label">XP</span>
                 </div>
-              </template>
-
-              <!-- Fallback -->
-              <template v-else>
-                <pre class="preview-json">{{ JSON.stringify(steps[currentStep], null, 2) }}</pre>
-              </template>
+              </div>
+              <pre v-else class="preview-json">{{ JSON.stringify(step, null, 2) }}</pre>
             </div>
           </div>
           <div class="phone-nav">
@@ -286,52 +238,35 @@
               <span v-if="item?.type" class="article-type-badge">{{ item.type }}</span>
             </div>
             <div v-for="(block, i) in blocks" :key="i" class="article-block">
-              <template v-if="block.type === 'heading'">
-                <h3 class="ab-heading">{{ block.text }}</h3>
-              </template>
-              <template v-else-if="block.type === 'text'">
-                <p class="ab-text">{{ block.text }}</p>
-              </template>
-              <template v-else-if="block.type === 'quote'">
+              <h3 v-if="block.type === 'heading'" class="ab-heading">{{ block.text }}</h3>
+              <p v-else-if="block.type === 'text'" class="ab-text">{{ block.text }}</p>
+              <div v-else-if="block.type === 'quote'">
                 <blockquote class="ab-quote">"{{ block.text }}"</blockquote>
                 <p v-if="block.attribution" class="ab-attribution">— {{ block.attribution }}</p>
-              </template>
-              <template v-else-if="block.type === 'bullet_list'">
-                <ul class="ab-list">
-                  <li v-for="(li, li_i) in (block.items || [])" :key="li_i" v-html="li"></li>
-                </ul>
-              </template>
-              <template v-else-if="block.type === 'cross_ref'">
-                <div class="ab-crossref">
-                  <span class="crossref-icon">&#8594;</span>
-                  <span class="crossref-term">{{ block.term }}</span>
-                </div>
-              </template>
-              <template v-else-if="block.type === 'mention'">
-                <div class="ab-mention">
-                  <span class="mention-icon">&#9733;</span>
-                  <span class="mention-name">{{ block.name }}</span>
-                  <span v-if="block.entityType" class="mention-type">{{ block.entityType }}</span>
-                </div>
-              </template>
-              <template v-else-if="block.type === 'image'">
-                <div class="ab-image">
-                  <div class="ab-image-placeholder">Image: {{ block.alt || block.url || '' }}</div>
-                  <span v-if="block.caption" class="ab-image-caption">{{ block.caption }}</span>
-                </div>
-              </template>
-              <template v-else-if="block.type === 'scripture'">
-                <div class="ab-scripture">
-                  <p class="ab-scripture-text">"{{ block.text }}"</p>
-                  <span class="ab-scripture-ref">{{ block.reference }}</span>
-                </div>
-              </template>
-              <template v-else-if="block.type === 'callout'">
-                <div class="ab-callout">{{ block.text }}</div>
-              </template>
-              <template v-else>
-                <div class="ab-generic">[{{ block.type }}] {{ block.text || JSON.stringify(block) }}</div>
-              </template>
+              </div>
+              <ul v-else-if="block.type === 'bullet_list'" class="ab-list">
+                <li v-for="(li, li_i) in (block.items || [])" :key="li_i" v-html="li"></li>
+              </ul>
+              <div v-else-if="block.type === 'cross_ref'" class="ab-crossref">
+                <span class="crossref-icon">&#8594;</span>
+                <span class="crossref-term">{{ block.term }}</span>
+              </div>
+              <div v-else-if="block.type === 'mention'" class="ab-mention">
+                <span class="mention-icon">&#9733;</span>
+                <span class="mention-name">{{ block.name }}</span>
+                <span v-if="block.entityType" class="mention-type">{{ block.entityType }}</span>
+              </div>
+              <div v-else-if="block.type === 'image'" class="ab-image">
+                <img v-if="block.url" :src="block.url" :alt="block.alt || ''" class="ab-img" />
+                <div v-else class="ab-image-placeholder">Image: {{ block.alt || '' }}</div>
+                <span v-if="block.caption" class="ab-image-caption">{{ block.caption }}</span>
+              </div>
+              <div v-else-if="block.type === 'scripture'" class="ab-scripture">
+                <p class="ab-scripture-text">"{{ block.text }}"</p>
+                <span class="ab-scripture-ref">{{ block.reference }}</span>
+              </div>
+              <div v-else-if="block.type === 'callout'" class="ab-callout">{{ block.text }}</div>
+              <div v-else class="ab-generic">[{{ block.type }}] {{ block.text || JSON.stringify(block) }}</div>
             </div>
           </div>
         </div>
@@ -444,6 +379,8 @@ const editableFields = reactive<Record<string, any>>({})
 const steps = ref<any[]>([])
 const blocks = ref<any[]>([])
 const currentStep = ref(0)
+const step = computed(() => steps.value[currentStep.value] || null)
+const stepType = computed(() => step.value?.type || '')
 
 function formatLabel(key: string): string {
   return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -1216,6 +1153,11 @@ async function handleSave() {
 
 .ab-image {
   text-align: center;
+}
+
+.ab-img {
+  width: 100%;
+  border-radius: 6px;
 }
 
 .ab-image-placeholder {
