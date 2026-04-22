@@ -292,6 +292,16 @@ async function doCreate() {
   const defaults = NEW_DEFAULTS[contentType.value]
   if (!defaults) return
 
+  // Validate required FK fields
+  if (contentType.value === 'lessons' && !createFields.value.track_id) {
+    errorMsg.value = 'Please select a track.'
+    return
+  }
+  if (contentType.value === 'tracks' && !createFields.value.pillar_id) {
+    errorMsg.value = 'Please select a pillar.'
+    return
+  }
+
   creating.value = true
   const insertData = { ...defaults, ...createFields.value }
   // Auto-generate slugs
