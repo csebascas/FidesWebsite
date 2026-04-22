@@ -126,7 +126,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { supabase } from '../../lib/supabase'
+import { supabase, adminRpc } from '../../lib/supabase'
 
 const loadingStats = ref(true)
 const loadingActivity = ref(true)
@@ -194,10 +194,10 @@ onMounted(async () => {
   )
   contentCounts.value = counts
 
-  // 3. Recent activity feed
+  // 3. Recent activity feed (users table needs service role)
   const [signups, completions] = await Promise.all([
-    supabase.from('users').select('id, display_name, created_at').order('created_at', { ascending: false }).limit(6),
-    supabase.from('user_lesson_progress').select('id, user_id, lesson_id, completed_at').eq('completed', true).not('completed_at', 'is', null).order('completed_at', { ascending: false }).limit(10),
+    adminRpc({ action: 'select', table: 'users', select: 'id, display_name, created_at', order: { column: 'created_at', ascending: false }, limit: 6 }),
+    adminRpc({ action: 'select', table: 'user_lesson_progress', select: 'id, user_id, lesson_id, completed_at', match: { completed: true }, order: { column: 'completed_at', ascending: false }, limit: 10 }),
   ])
 
   const feed: any[] = []
@@ -211,10 +211,11 @@ onMounted(async () => {
     const userIds = [...new Set(completions.data.map((c: any) => c.user_id))]
     const [lessonRes, userRes] = await Promise.all([
       supabase.from('lessons').select('id, title').in('id', lessonIds),
-      supabase.from('users').select('id, display_name').in('id', userIds),
+      adminRpc({ action: 'select', table: 'users', select: 'id, display_name' }),
     ])
     const lessonMap = Object.fromEntries((lessonRes.data ?? []).map((l: any) => [l.id, l.title]))
-    const userMap = Object.fromEntries((userRes.data ?? []).map((u: any) => [u.id, u.display_name || 'Anonymous']))
+    const allUsers = (userRes.data ?? []).filter((u: any) => userIds.includes(u.id))
+    const userMap = Object.fromEntries(allUsers.map((u: any) => [u.id, u.display_name || 'Anonymous']))
 
     for (const c of completions.data) {
       feed.push({

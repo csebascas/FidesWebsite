@@ -93,7 +93,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { supabase } from '../../lib/supabase'
+import { adminRpc } from '../../lib/supabase'
 
 const tabs = [
   { key: 'feedback', label: 'User Feedback' },
@@ -117,9 +117,9 @@ function formatDate(dateStr: string): string {
 
 onMounted(async () => {
   const [fb, reports, requests] = await Promise.all([
-    supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(100),
-    supabase.from('content_reports').select('*').order('created_at', { ascending: false }).limit(100),
-    supabase.from('topic_requests').select('*').order('created_at', { ascending: false }).limit(100),
+    adminRpc({ action: 'select', table: 'feedback', order: { column: 'created_at', ascending: false }, limit: 100 }),
+    adminRpc({ action: 'select', table: 'content_reports', order: { column: 'created_at', ascending: false }, limit: 100 }),
+    adminRpc({ action: 'select', table: 'topic_requests', order: { column: 'created_at', ascending: false }, limit: 100 }),
   ])
   feedbackItems.value = fb.data ?? []
   reportItems.value = reports.data ?? []

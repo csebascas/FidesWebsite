@@ -66,7 +66,7 @@
                 <p v-if="step.source" class="preview-source">— {{ step.source }}</p>
               </div>
               <div v-else-if="stepType === 'quote'">
-                <blockquote class="preview-quote">"{{ step.text }}"</blockquote>
+                <blockquote class="preview-quote">"{{ step.quote || step.text }}"</blockquote>
                 <p class="preview-source">— {{ step.attribution }}</p>
               </div>
               <div v-else-if="stepType === 'truefalse'">
@@ -359,7 +359,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
-import { supabase, TABLE_MAP } from '../../lib/supabase'
+import { supabase, TABLE_MAP, adminRpc } from '../../lib/supabase'
 
 const route = useRoute()
 
@@ -437,29 +437,18 @@ async function handleSave() {
   saveMessage.value = ''
   saveError.value = false
 
-  const tableName = TABLE_MAP[contentType.value] || contentType.value
   const updates = { ...editableFields }
   delete updates.id
   delete updates.created_at
 
-  try {
-    const { error } = await supabase
-      .from(tableName)
-      .update(updates)
-      .eq('id', contentId.value)
-
-    if (error) {
-      saveError.value = true
-      saveMessage.value = `Failed to save: ${error.message}`
-    } else {
-      saveMessage.value = 'Saved successfully.'
-    }
-  } catch {
+  const { error } = await adminRpc({ action: 'update', table: contentType.value, id: contentId.value, data: updates })
+  if (error) {
     saveError.value = true
-    saveMessage.value = 'Network error.'
-  } finally {
-    saving.value = false
+    saveMessage.value = `Failed to save: ${error}`
+  } else {
+    saveMessage.value = 'Saved successfully.'
   }
+  saving.value = false
 }
 </script>
 

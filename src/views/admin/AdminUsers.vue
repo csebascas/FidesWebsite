@@ -136,6 +136,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { supabase } from '../../lib/supabase'
+import { adminRpc } from '../../lib/supabase'
 
 const users = ref<any[]>([])
 const loading = ref(true)
@@ -184,15 +185,12 @@ function sortBy(key: string) {
 
 async function selectUser(user: any) {
   selectedUser.value = user
-  const { data } = await supabase
-    .from('user_lesson_progress')
-    .select('id, lesson_id, completed, times_completed, best_score, completed_at')
-    .eq('user_id', user.id)
-    .eq('completed', true)
-    .order('completed_at', { ascending: false })
-    .limit(50)
+  const { data } = await adminRpc({
+    action: 'select', table: 'user_lesson_progress',
+    match: { user_id: user.id, completed: true },
+    order: { column: 'completed_at', ascending: false }, limit: 50,
+  })
 
-  // Look up lesson titles
   if (data && data.length > 0) {
     const lessonIds = [...new Set(data.map((p: any) => p.lesson_id))]
     const { data: lessons } = await supabase.from('lessons').select('id, title').in('id', lessonIds)
@@ -213,12 +211,10 @@ async function handleDelete() {
   const userId = deleteTarget.value.id
 
   // Delete related data first, then user
-  await supabase.from('user_lesson_progress').delete().eq('user_id', userId)
-  await supabase.from('user_track_progress').delete().eq('user_id', userId)
-  await supabase.from('user_saint_unlocks').delete().eq('user_id', userId)
-  await supabase.from('user_badges').delete().eq('user_id', userId)
-  await supabase.from('league_entries').delete().eq('user_id', userId)
-  const { error } = await supabase.from('users').delete().eq('id', userId)
+  for (const t of ['user_lesson_progress', 'user_track_progress', 'user_saint_unlocks', 'user_badges', 'league_entries']) {
+    await adminRpc({ action: 'delete', table: t, match: { user_id: userId } })
+  }
+  const { error } = await adminRpc({ action: 'delete', table: 'users', id: userId })
 
   if (!error) {
     users.value = users.value.filter(u => u.id !== userId)
@@ -229,11 +225,10 @@ async function handleDelete() {
 }
 
 onMounted(async () => {
-  const { data } = await supabase
-    .from('users')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(500)
+  const { data } = await adminRpc({
+    action: 'select', table: 'users',
+    order: { column: 'created_at', ascending: false }, limit: 500,
+  })
   users.value = data ?? []
   loading.value = false
 })

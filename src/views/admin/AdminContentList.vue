@@ -77,7 +77,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { supabase, TABLE_MAP } from '../../lib/supabase'
+import { supabase, TABLE_MAP, adminRpc } from '../../lib/supabase'
 
 const route = useRoute()
 const router = useRouter()
@@ -206,36 +206,21 @@ const NEW_DEFAULTS: Record<string, Record<string, any>> = {
 }
 
 async function handleCreate() {
-  const tableName = TABLE_MAP[contentType.value]
   const defaults = NEW_DEFAULTS[contentType.value]
-  if (!tableName || !defaults) return
+  if (!defaults) return
 
   creating.value = true
-  try {
-    // For articles, generate a unique slug
-    const insertData = { ...defaults }
-    if (contentType.value === 'articles') {
-      insertData.slug = `new-article-${Date.now()}`
-    } else if (contentType.value === 'pillars') {
-      insertData.slug = `new-pillar-${Date.now()}`
-    }
+  const insertData = { ...defaults }
+  if (contentType.value === 'articles') insertData.slug = `new-article-${Date.now()}`
+  else if (contentType.value === 'pillars') insertData.slug = `new-pillar-${Date.now()}`
 
-    const { data, error } = await supabase
-      .from(tableName)
-      .insert(insertData)
-      .select('id')
-      .single()
-
-    if (error) {
-      errorMsg.value = `Failed to create: ${error.message}`
-    } else if (data) {
-      router.push(`/d/content/${contentType.value}/${data.id}`)
-    }
-  } catch (e: any) {
-    errorMsg.value = `Error: ${e.message}`
-  } finally {
-    creating.value = false
+  const { data, error } = await adminRpc({ action: 'insert', table: contentType.value, data: insertData })
+  if (error) {
+    errorMsg.value = `Failed to create: ${error}`
+  } else if (data) {
+    router.push(`/d/content/${contentType.value}/${data.id}`)
   }
+  creating.value = false
 }
 
 async function fetchData() {

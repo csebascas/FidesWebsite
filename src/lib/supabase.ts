@@ -14,3 +14,31 @@ export const TABLE_MAP: Record<string, string> = {
   tracks: 'tracks',
   pillars: 'pillars',
 }
+
+/**
+ * Admin RPC — calls the service-role API for operations blocked by RLS.
+ * Use for: reading users, creating/updating/deleting content, reading feedback.
+ */
+export async function adminRpc(body: {
+  action: 'select' | 'insert' | 'update' | 'delete'
+  table: string
+  data?: any
+  id?: string
+  match?: Record<string, any>
+  select?: string
+  order?: { column: string; ascending?: boolean }
+  limit?: number
+}): Promise<{ data?: any; error?: string }> {
+  try {
+    const res = await fetch('/api/admin/rpc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const json = await res.json()
+    if (!res.ok) return { error: json.error || res.statusText }
+    return { data: json.data }
+  } catch (e: any) {
+    return { error: e.message || 'Network error' }
+  }
+}
