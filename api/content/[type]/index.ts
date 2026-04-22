@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { verifyAdmin } from '../_lib/auth.js';
-import { getAdminClient } from '../_lib/supabase.js';
+import { verifyAdmin } from '../../_lib/auth.js';
+import { getAdminClient } from '../../_lib/supabase.js';
 
 /** Fields to exclude from list responses (large JSON blobs). */
 const HEAVY_FIELDS = ['content', 'body', 'steps', 'blocks'];
