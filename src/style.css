@@ -63,3 +63,7 @@ img { display: block; max-width: 100%; }
 .reveal-stagger.visible > *:nth-child(5) { transition-delay: 320ms; opacity: 1; transform: none; }
 .reveal-stagger.visible > *:nth-child(6) { transition-delay: 400ms; opacity: 1; transform: none; }
 .reveal-stagger.visible > *:nth-child(7) { transition-delay: 480ms; opacity: 1; transform: none; }
+
+/* Route transitions */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.15s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }

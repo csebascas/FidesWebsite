@@ -9,6 +9,10 @@
     <aside class="sidebar" :class="{ open: sidebarOpen }">
       <div class="sidebar-top">
         <router-link to="/d/dashboard" class="wordmark">Fides</router-link>
+        <button class="search-trigger" @click="searchOpen = true">
+          <span class="search-trigger-text">Search...</span>
+          <kbd class="search-trigger-kbd">&#8984;K</kbd>
+        </button>
       </div>
 
       <nav class="sidebar-nav">
@@ -41,21 +45,36 @@
     <div class="sidebar-overlay" v-if="sidebarOpen" @click="sidebarOpen = false"></div>
 
     <main class="main-content">
-      <router-view />
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
     </main>
+
+    <QuickSearch v-model="searchOpen" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import QuickSearch from '../../components/QuickSearch.vue'
 
 const router = useRouter()
 const userEmail = ref('')
 const sidebarOpen = ref(false)
+const searchOpen = ref(false)
 
 function closeSidebar() {
   sidebarOpen.value = false
+}
+
+function handleKeydown(e: KeyboardEvent) {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault()
+    searchOpen.value = !searchOpen.value
+  }
 }
 
 async function handleSignOut() {
@@ -64,6 +83,7 @@ async function handleSignOut() {
 }
 
 onMounted(async () => {
+  document.addEventListener('keydown', handleKeydown)
   try {
     const res = await fetch('/api/auth/me')
     if (res.ok) {
@@ -73,6 +93,10 @@ onMounted(async () => {
   } catch {
     // ignore
   }
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
 })
 </script>
 
@@ -107,6 +131,26 @@ onMounted(async () => {
   color: var(--gold);
   text-decoration: none;
   font-weight: 700;
+}
+
+.search-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.search-trigger:hover { border-color: var(--text-3); }
+.search-trigger-text { font-family: var(--sans); font-size: 12px; color: var(--text-3); }
+.search-trigger-kbd {
+  font-family: var(--sans); font-size: 10px; color: var(--text-3);
+  background: var(--surface); padding: 2px 6px; border-radius: 3px;
 }
 
 .sidebar-nav {
