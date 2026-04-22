@@ -71,6 +71,37 @@
 
     <div v-if="loading" class="loading-text">Loading...</div>
     <div v-if="errorMsg" class="error-text">{{ errorMsg }}</div>
+
+    <!-- Create modal for types that need required fields -->
+    <div v-if="showCreateModal" class="modal-overlay" @click="showCreateModal = false">
+      <div class="modal" @click.stop>
+        <h3 class="modal-title">New {{ singularType }}</h3>
+        <div class="modal-fields">
+          <div v-if="contentType === 'lessons'" class="modal-field">
+            <label>Track</label>
+            <select v-model="createFields.track_id" class="modal-input">
+              <option value="">Select a track...</option>
+              <option v-for="t in trackOptions" :key="t.id" :value="t.id">{{ t.name }}</option>
+            </select>
+          </div>
+          <div v-if="contentType === 'lessons'" class="modal-field">
+            <label>Title</label>
+            <input v-model="createFields.title" class="modal-input" placeholder="Lesson title" />
+          </div>
+          <div v-if="contentType === 'tracks'" class="modal-field">
+            <label>Pillar</label>
+            <select v-model="createFields.pillar_id" class="modal-input">
+              <option value="">Select a pillar...</option>
+              <option v-for="p in pillarOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="showCreateModal = false">Cancel</button>
+          <button class="btn-gold" @click="doCreate" :disabled="creating">{{ creating ? 'Creating...' : 'Create' }}</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -143,6 +174,13 @@ const sortDir = ref<'asc' | 'desc'>('asc')
 const loading = ref(true)
 const creating = ref(false)
 const errorMsg = ref('')
+const showCreateModal = ref(false)
+const createFields = ref<Record<string, any>>({})
+
+const singularType = computed(() => {
+  const t = contentType.value
+  return t?.endsWith('s') ? t.slice(0, -1) : t
+})
 const trackFilter = ref('')
 const pillarFilter = ref('')
 const trackOptions = ref<any[]>([])
@@ -205,19 +243,41 @@ const NEW_DEFAULTS: Record<string, Record<string, any>> = {
   pillars: { name: 'New Pillar', slug: `new-pillar-${Date.now()}`, color: '#C8A55A', sort_order: 0 },
 }
 
-async function handleCreate() {
+function handleCreate() {
+  // Types that need required fields show a modal first
+  if (contentType.value === 'lessons') {
+    createFields.value = { title: '', track_id: '' }
+    showCreateModal.value = true
+    return
+  }
+  if (contentType.value === 'tracks') {
+    createFields.value = { name: '', pillar_id: '' }
+    showCreateModal.value = true
+    return
+  }
+  // Others can create directly
+  doCreate()
+}
+
+async function doCreate() {
   const defaults = NEW_DEFAULTS[contentType.value]
   if (!defaults) return
 
   creating.value = true
-  const insertData = { ...defaults }
+  const insertData = { ...defaults, ...createFields.value }
   if (contentType.value === 'articles') insertData.slug = `new-article-${Date.now()}`
   else if (contentType.value === 'pillars') insertData.slug = `new-pillar-${Date.now()}`
+
+  // Remove empty strings for required FK fields
+  for (const [k, v] of Object.entries(insertData)) {
+    if (v === '') delete insertData[k]
+  }
 
   const { data, error } = await adminRpc({ action: 'insert', table: contentType.value, data: insertData })
   if (error) {
     errorMsg.value = `Failed to create: ${error}`
   } else if (data) {
+    showCreateModal.value = false
     router.push(`/d/content/${contentType.value}/${data.id}`)
   }
   creating.value = false
@@ -468,6 +528,29 @@ watch(contentType, () => {
   font-size: 13px;
   color: var(--text-3);
   margin-top: 16px;
+}
+
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 24px; max-width: 420px; width: 90%;
+}
+.modal-title { font-family: var(--serif); font-size: 18px; color: var(--text); margin: 0 0 16px; }
+.modal-fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.modal-field { display: flex; flex-direction: column; gap: 4px; }
+.modal-field label { font-family: var(--sans); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-3); }
+.modal-input {
+  font-family: var(--sans); font-size: 14px; padding: 10px 14px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--raised); color: var(--text); outline: none;
+}
+.modal-input:focus { border-color: var(--gold); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.btn-cancel {
+  font-family: var(--sans); font-size: 13px; padding: 10px 20px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--raised); color: var(--text-2); cursor: pointer;
 }
 
 .error-text {

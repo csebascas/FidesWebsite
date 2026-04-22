@@ -20,6 +20,7 @@
         <table class="data-table">
           <thead>
             <tr>
+              <th>User</th>
               <th>Category</th>
               <th>Message</th>
               <th>Version</th>
@@ -28,13 +29,19 @@
           </thead>
           <tbody>
             <tr v-for="item in feedbackItems" :key="item.id">
+              <td>
+                <router-link v-if="item.user_id" :to="`/d/users?user=${item.user_id}`" class="user-link">
+                  {{ item._user_name || 'Anonymous' }}
+                </router-link>
+                <span v-else class="text-muted">Anonymous</span>
+              </td>
               <td><span class="category-badge">{{ item.category || '—' }}</span></td>
               <td class="message-cell">{{ item.message || '—' }}</td>
               <td>{{ item.app_version || '—' }}</td>
               <td>{{ formatDate(item.created_at) }}</td>
             </tr>
             <tr v-if="feedbackItems.length === 0">
-              <td colspan="4" class="empty">No feedback yet.</td>
+              <td colspan="5" class="empty">No feedback yet.</td>
             </tr>
           </tbody>
         </table>
@@ -121,9 +128,18 @@ onMounted(async () => {
     adminRpc({ action: 'select', table: 'content_reports', order: { column: 'created_at', ascending: false }, limit: 100 }),
     adminRpc({ action: 'select', table: 'topic_requests', order: { column: 'created_at', ascending: false }, limit: 100 }),
   ])
-  feedbackItems.value = fb.data ?? []
-  reportItems.value = reports.data ?? []
-  requestItems.value = requests.data ?? []
+  // Enrich feedback with user names
+  const allItems = [...(fb.data ?? []), ...(reports.data ?? []), ...(requests.data ?? [])]
+  const userIds = [...new Set(allItems.map((i: any) => i.user_id).filter(Boolean))]
+  let userMap: Record<string, string> = {}
+  if (userIds.length > 0) {
+    const { data: users } = await adminRpc({ action: 'select', table: 'users', select: 'id, display_name' })
+    userMap = Object.fromEntries((users ?? []).filter((u: any) => userIds.includes(u.id)).map((u: any) => [u.id, u.display_name || 'Anonymous']))
+  }
+
+  feedbackItems.value = (fb.data ?? []).map((i: any) => ({ ...i, _user_name: userMap[i.user_id] || null }))
+  reportItems.value = (reports.data ?? []).map((i: any) => ({ ...i, _user_name: userMap[i.user_id] || null }))
+  requestItems.value = (requests.data ?? []).map((i: any) => ({ ...i, _user_name: userMap[i.user_id] || null }))
 })
 </script>
 
@@ -213,6 +229,10 @@ onMounted(async () => {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+.user-link { color: var(--gold-light); text-decoration: none; }
+.user-link:hover { text-decoration: underline; }
+.text-muted { color: var(--text-3); }
 
 .id-cell {
   font-family: monospace;
