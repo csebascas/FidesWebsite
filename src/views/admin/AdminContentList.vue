@@ -64,6 +64,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { supabase, TABLE_MAP } from '../../lib/supabase'
 
 const route = useRoute()
 const router = useRouter()
@@ -170,34 +171,60 @@ async function fetchData() {
   loading.value = true
   rows.value = []
   errorMsg.value = ''
+
+  const tableName = TABLE_MAP[contentType.value]
+  if (!tableName) {
+    errorMsg.value = `Unknown content type: ${contentType.value}`
+    loading.value = false
+    return
+  }
+
   try {
-    const res = await fetch(`/api/content/${contentType.value}`)
-    if (res.ok) {
-      const json = await res.json()
-      const raw = json.data ?? json
-      rows.value = (Array.isArray(raw) ? raw : []).map((row: any) => {
-        const flat: any = { ...row }
-        // Enriched fields from API
-        flat.track = row._track_name ?? '—'
-        flat.pillar = row._pillar_name ?? '—'
-        if (contentType.value === 'lessons') {
-          flat.steps = row.step_count ?? '—'
-          flat.xp = row.xp_reward ?? '—'
-        }
-        if (contentType.value === 'tracks') {
-          flat.lessons = row.lesson_count ?? '—'
-        }
-        if (contentType.value === 'saints' && row.feast_month) {
-          flat.feast_day = `${row.feast_month}/${row.feast_day_number ?? '?'}`
-        }
-        return flat
-      })
-    } else {
-      const err = await res.json().catch(() => ({}))
-      errorMsg.value = `Failed to load: ${err.error || res.statusText}`
+    const { data, error } = await supabase.from(tableName).select('*').limit(500)
+
+    if (error) {
+      errorMsg.value = `Failed to load: ${error.message}`
+      loading.value = false
+      return
     }
+
+    // Look up track/pillar names for enrichment
+    let trackMap: Record<string, any> = {}
+    let pillarMap: Record<string, string> = {}
+
+    if (contentType.value === 'lessons' || contentType.value === 'tracks') {
+      const { data: pillars } = await supabase.from('pillars').select('id, name')
+      pillarMap = Object.fromEntries((pillars ?? []).map((p: any) => [p.id, p.name]))
+    }
+
+    if (contentType.value === 'lessons') {
+      const { data: tracks } = await supabase.from('tracks').select('id, name, pillar_id')
+      trackMap = Object.fromEntries((tracks ?? []).map((t: any) => [t.id, t]))
+    }
+
+    rows.value = (data ?? []).map((row: any) => {
+      const flat: any = { ...row }
+      // Remove heavy fields from display
+      delete flat.content
+      delete flat.body
+
+      if (contentType.value === 'lessons') {
+        const track = trackMap[row.track_id]
+        flat.track = track?.name ?? '—'
+        flat.pillar = track ? (pillarMap[track.pillar_id] ?? '—') : '—'
+        flat.xp = row.xp_reward ?? '—'
+      }
+      if (contentType.value === 'tracks') {
+        flat.pillar = pillarMap[row.pillar_id] ?? '—'
+        flat.lessons = row.lesson_count ?? '—'
+      }
+      if (contentType.value === 'saints' && row.feast_month) {
+        flat.feast_day = `${row.feast_month}/${row.feast_day_number ?? '?'}`
+      }
+      return flat
+    })
   } catch (e: any) {
-    errorMsg.value = `Network error: ${e.message || 'could not reach API'}`
+    errorMsg.value = `Error: ${e.message || 'could not load data'}`
   } finally {
     loading.value = false
   }

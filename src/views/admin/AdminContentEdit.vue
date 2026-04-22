@@ -193,6 +193,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
+import { supabase, TABLE_MAP } from '../../lib/supabase'
 
 const route = useRoute()
 
@@ -222,32 +223,39 @@ function isLongText(value: any): boolean {
 }
 
 onMounted(async () => {
+  const tableName = TABLE_MAP[contentType.value] || contentType.value
   try {
-    const res = await fetch(`/api/content/${contentType.value}/${contentId.value}`)
-    if (res.ok) {
-      const json = await res.json()
-      const row = json.data ?? json
-      item.value = row
+    const { data: row, error } = await supabase
+      .from(tableName)
+      .select('*')
+      .eq('id', contentId.value)
+      .single()
 
-      // Extract lesson steps
-      if (contentType.value === 'lessons' && row.content) {
-        const content = typeof row.content === 'string' ? JSON.parse(row.content) : row.content
-        steps.value = Array.isArray(content) ? content : (content.steps || [])
-      }
+    if (error || !row) {
+      loading.value = false
+      return
+    }
 
-      // Extract article blocks
-      if (contentType.value === 'articles' && row.body) {
-        const body = typeof row.body === 'string' ? JSON.parse(row.body) : row.body
-        blocks.value = Array.isArray(body) ? body : []
-      }
+    item.value = row
 
-      // Populate editable fields (exclude complex nested objects)
-      for (const [key, val] of Object.entries(row)) {
-        if (['id', 'content', 'body', 'steps'].includes(key)) continue
-        if (typeof val === 'object' && val !== null && !Array.isArray(val)) continue
-        if (Array.isArray(val)) continue
-        editableFields[key] = val
-      }
+    // Extract lesson steps
+    if (contentType.value === 'lessons' && row.content) {
+      const content = typeof row.content === 'string' ? JSON.parse(row.content) : row.content
+      steps.value = Array.isArray(content) ? content : (content.steps || [])
+    }
+
+    // Extract article blocks
+    if (contentType.value === 'articles' && row.body) {
+      const body = typeof row.body === 'string' ? JSON.parse(row.body) : row.body
+      blocks.value = Array.isArray(body) ? body : []
+    }
+
+    // Populate editable fields (exclude complex nested objects)
+    for (const [key, val] of Object.entries(row)) {
+      if (['id', 'content', 'body', 'steps'].includes(key)) continue
+      if (typeof val === 'object' && val !== null && !Array.isArray(val)) continue
+      if (Array.isArray(val)) continue
+      editableFields[key] = val
     }
   } catch {
     // ignore
@@ -261,18 +269,22 @@ async function handleSave() {
   saveMessage.value = ''
   saveError.value = false
 
-  try {
-    const res = await fetch(`/api/content/${contentType.value}/${contentId.value}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editableFields),
-    })
+  const tableName = TABLE_MAP[contentType.value] || contentType.value
+  const updates = { ...editableFields }
+  delete updates.id
+  delete updates.created_at
 
-    if (res.ok) {
-      saveMessage.value = 'Saved successfully.'
-    } else {
+  try {
+    const { error } = await supabase
+      .from(tableName)
+      .update(updates)
+      .eq('id', contentId.value)
+
+    if (error) {
       saveError.value = true
-      saveMessage.value = 'Failed to save.'
+      saveMessage.value = `Failed to save: ${error.message}`
+    } else {
+      saveMessage.value = 'Saved successfully.'
     }
   } catch {
     saveError.value = true
