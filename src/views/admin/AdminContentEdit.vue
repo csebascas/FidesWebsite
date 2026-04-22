@@ -46,6 +46,26 @@
         </div>
       </form>
 
+      <!-- Lesson step editor -->
+      <div v-if="contentType === 'lessons'" class="editor-section">
+        <h3 class="editor-title">Lesson Steps <span class="editor-count">{{ steps.length }} steps</span></h3>
+        <StepEditor v-model="steps" @selectStep="currentStep = $event" />
+        <button class="btn-gold save-content-btn" @click="saveContent" :disabled="savingContent">
+          {{ savingContent ? 'Saving steps...' : 'Save Steps' }}
+        </button>
+        <span v-if="contentSaveMsg" class="save-message" :class="contentSaveErr ? 'error' : 'success'">{{ contentSaveMsg }}</span>
+      </div>
+
+      <!-- Article block editor -->
+      <div v-if="contentType === 'articles'" class="editor-section">
+        <h3 class="editor-title">Article Body <span class="editor-count">{{ blocks.length }} blocks</span></h3>
+        <BlockEditor v-model="blocks" />
+        <button class="btn-gold save-content-btn" @click="saveBody" :disabled="savingContent">
+          {{ savingContent ? 'Saving body...' : 'Save Body' }}
+        </button>
+        <span v-if="contentSaveMsg" class="save-message" :class="contentSaveErr ? 'error' : 'success'">{{ contentSaveMsg }}</span>
+      </div>
+
       <!-- Lesson step preview -->
       <div v-if="contentType === 'lessons' && steps.length > 0" class="preview-panel">
         <div class="preview-header">
@@ -360,6 +380,8 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase, TABLE_MAP, adminRpc } from '../../lib/supabase'
+import StepEditor from '../../components/StepEditor.vue'
+import BlockEditor from '../../components/BlockEditor.vue'
 
 const route = useRoute()
 
@@ -450,6 +472,30 @@ async function handleSave() {
   }
   saving.value = false
 }
+
+const savingContent = ref(false)
+const contentSaveMsg = ref('')
+const contentSaveErr = ref(false)
+
+async function saveContent() {
+  savingContent.value = true
+  contentSaveMsg.value = ''
+  contentSaveErr.value = false
+  const { error } = await adminRpc({ action: 'update', table: 'lessons', id: contentId.value, data: { content: steps.value } })
+  if (error) { contentSaveErr.value = true; contentSaveMsg.value = `Failed: ${error}` }
+  else { contentSaveMsg.value = 'Steps saved.' }
+  savingContent.value = false
+}
+
+async function saveBody() {
+  savingContent.value = true
+  contentSaveMsg.value = ''
+  contentSaveErr.value = false
+  const { error } = await adminRpc({ action: 'update', table: 'articles', id: contentId.value, data: { body: blocks.value } })
+  if (error) { contentSaveErr.value = true; contentSaveMsg.value = `Failed: ${error}` }
+  else { contentSaveMsg.value = 'Body saved.' }
+  savingContent.value = false
+}
 </script>
 
 <style scoped>
@@ -463,6 +509,18 @@ async function handleSave() {
   gap: 32px;
   align-items: start;
 }
+
+.editor-section {
+  grid-column: 1;
+  margin-top: 24px;
+}
+.editor-title {
+  font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--text-2); margin: 0 0 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.editor-count { font-weight: 400; font-size: 12px; color: var(--text-3); }
+.save-content-btn { margin-top: 12px; }
+.save-content-btn + .save-message { margin-left: 12px; }
 
 @media (max-width: 900px) {
   .edit-layout { grid-template-columns: 1fr; }
