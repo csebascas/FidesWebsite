@@ -14,6 +14,14 @@
         class="search-input"
         :placeholder="`Search ${title.toLowerCase()}...`"
       />
+      <select v-if="contentType === 'lessons' && trackOptions.length" v-model="trackFilter" class="filter-select">
+        <option value="">All tracks</option>
+        <option v-for="t in trackOptions" :key="t.id" :value="t.id">{{ t.name }}</option>
+      </select>
+      <select v-if="contentType === 'lessons' && pillarOptions.length" v-model="pillarFilter" class="filter-select">
+        <option value="">All pillars</option>
+        <option v-for="p in pillarOptions" :key="p.id" :value="p.id">{{ p.name }}</option>
+      </select>
     </div>
 
     <div class="table-wrap">
@@ -135,9 +143,24 @@ const sortDir = ref<'asc' | 'desc'>('asc')
 const loading = ref(true)
 const creating = ref(false)
 const errorMsg = ref('')
+const trackFilter = ref('')
+const pillarFilter = ref('')
+const trackOptions = ref<any[]>([])
+const pillarOptions = ref<any[]>([])
+const trackToPillar = ref<Record<string, string>>({})
 
 const filteredRows = computed(() => {
   let result = rows.value
+
+  if (trackFilter.value) {
+    result = result.filter((row) => row.track_id === trackFilter.value)
+  }
+  if (pillarFilter.value) {
+    result = result.filter((row) => {
+      if (row.pillar_id) return row.pillar_id === pillarFilter.value
+      return trackToPillar.value[row.track_id] === pillarFilter.value
+    })
+  }
 
   if (search.value) {
     const q = search.value.toLowerCase()
@@ -243,11 +266,14 @@ async function fetchData() {
     if (contentType.value === 'lessons' || contentType.value === 'tracks') {
       const { data: pillars } = await supabase.from('pillars').select('id, name')
       pillarMap = Object.fromEntries((pillars ?? []).map((p: any) => [p.id, p.name]))
+      pillarOptions.value = (pillars ?? []).sort((a: any, b: any) => a.name.localeCompare(b.name))
     }
 
     if (contentType.value === 'lessons') {
       const { data: tracks } = await supabase.from('tracks').select('id, name, pillar_id')
       trackMap = Object.fromEntries((tracks ?? []).map((t: any) => [t.id, t]))
+      trackOptions.value = (tracks ?? []).sort((a: any, b: any) => a.name.localeCompare(b.name))
+      trackToPillar.value = Object.fromEntries((tracks ?? []).map((t: any) => [t.id, t.pillar_id]))
     }
 
     rows.value = (data ?? []).map((row: any) => {
@@ -331,7 +357,22 @@ watch(contentType, () => {
 .btn-gold:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .toolbar {
+  display: flex;
+  gap: 8px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-select {
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
 }
 
 .search-input {

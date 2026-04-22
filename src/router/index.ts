@@ -63,6 +63,11 @@ const routes = [
         meta: { title: 'Edit Content — Fides Admin', requiresAuth: true },
       },
       {
+        path: 'users',
+        component: () => import('../views/admin/AdminUsers.vue'),
+        meta: { title: 'Users — Fides Admin', requiresAuth: true },
+      },
+      {
         path: 'feedback',
         component: () => import('../views/admin/AdminFeedback.vue'),
         meta: { title: 'Feedback — Fides Admin', requiresAuth: true },
