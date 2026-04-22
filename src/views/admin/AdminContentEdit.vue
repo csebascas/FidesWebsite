@@ -165,7 +165,7 @@
                 <p v-if="step.instruction" class="preview-body">{{ step.instruction }}</p>
                 <div class="preview-options">
                   <div v-for="(itm, ii) in (step.items || [])" :key="itm.id || ii" class="preview-option order-item">
-                    <span class="order-num">{{ ii + 1 }}</span> {{ itm.text }}
+                    <span class="order-num">{{ Number(ii) + 1 }}</span> {{ itm.text }}
                   </div>
                 </div>
                 <p v-if="step.explanation" class="preview-explanation">{{ step.explanation }}</p>
