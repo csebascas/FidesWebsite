@@ -59,73 +59,206 @@
           </div>
           <div class="phone-content">
             <div class="step-type-badge">{{ steps[currentStep]?.type || 'unknown' }}</div>
-            <div class="step-preview-content">
-              <template v-if="steps[currentStep]">
-                <!-- Concept -->
-                <template v-if="steps[currentStep].type === 'concept'">
-                  <h2 class="preview-heading">{{ steps[currentStep].title }}</h2>
-                  <p class="preview-body">{{ steps[currentStep].body }}</p>
-                  <p v-if="steps[currentStep].source" class="preview-source">— {{ steps[currentStep].source }}</p>
-                </template>
+            <div class="step-preview-content" v-if="steps[currentStep]">
+              <!-- Concept -->
+              <template v-if="steps[currentStep].type === 'concept'">
+                <h2 class="preview-heading">{{ steps[currentStep].title }}</h2>
+                <p class="preview-body">{{ steps[currentStep].body }}</p>
+                <p v-if="steps[currentStep].source" class="preview-source">— {{ steps[currentStep].source }}</p>
+              </template>
 
-                <!-- Quote -->
-                <template v-else-if="steps[currentStep].type === 'quote'">
-                  <blockquote class="preview-quote">"{{ steps[currentStep].text }}"</blockquote>
-                  <p class="preview-source">— {{ steps[currentStep].attribution }}</p>
-                </template>
+              <!-- Quote -->
+              <template v-else-if="steps[currentStep].type === 'quote'">
+                <blockquote class="preview-quote">"{{ steps[currentStep].text }}"</blockquote>
+                <p class="preview-source">— {{ steps[currentStep].attribution }}</p>
+              </template>
 
-                <!-- Question / Multiple Choice -->
-                <template v-else-if="steps[currentStep].type === 'question' || steps[currentStep].type === 'multiple_choice'">
-                  <p class="preview-question">{{ steps[currentStep].question || steps[currentStep].prompt }}</p>
-                  <div class="preview-options">
-                    <div
-                      v-for="(opt, oi) in (steps[currentStep].options || [])"
-                      :key="oi"
-                      class="preview-option"
-                      :class="{ correct: opt === steps[currentStep].correct_answer || (steps[currentStep].correct_index !== undefined && oi === steps[currentStep].correct_index) }"
-                    >
-                      {{ typeof opt === 'string' ? opt : opt.text || opt.label || JSON.stringify(opt) }}
-                    </div>
+              <!-- True/False -->
+              <template v-else-if="steps[currentStep].type === 'truefalse'">
+                <p class="preview-question">{{ steps[currentStep].statement }}</p>
+                <div class="preview-options">
+                  <div class="preview-option" :class="{ correct: steps[currentStep].isTrue }">True</div>
+                  <div class="preview-option" :class="{ correct: !steps[currentStep].isTrue }">False</div>
+                </div>
+                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
+              </template>
+
+              <!-- Question / Scenario / Doctrine-Life -->
+              <template v-else-if="steps[currentStep].type === 'question' || steps[currentStep].type === 'scenario' || steps[currentStep].type === 'doctrine-life'">
+                <p v-if="steps[currentStep].scenario" class="preview-body scenario-text">{{ steps[currentStep].scenario }}</p>
+                <p class="preview-question">{{ steps[currentStep].question || steps[currentStep].prompt }}</p>
+                <div class="preview-options">
+                  <div
+                    v-for="(opt, oi) in (steps[currentStep].options || [])"
+                    :key="oi"
+                    class="preview-option"
+                    :class="{ correct: opt.isCorrect || opt === steps[currentStep].correct_answer || (steps[currentStep].correct_index !== undefined && oi === steps[currentStep].correct_index) }"
+                  >
+                    {{ typeof opt === 'string' ? opt : opt.text || opt.label || '' }}
                   </div>
-                </template>
+                </div>
+                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
+              </template>
 
-                <!-- True/False -->
-                <template v-else-if="steps[currentStep].type === 'true_false'">
-                  <p class="preview-question">{{ steps[currentStep].statement }}</p>
-                  <div class="preview-options">
-                    <div class="preview-option" :class="{ correct: steps[currentStep].isTrue }">True</div>
-                    <div class="preview-option" :class="{ correct: !steps[currentStep].isTrue }">False</div>
+              <!-- Before-After -->
+              <template v-else-if="steps[currentStep].type === 'before-after'">
+                <div class="before-after-card wrong">
+                  <span class="ba-label">{{ steps[currentStep].misconceptionLabel || 'Misconception' }}</span>
+                  <p class="ba-text">{{ steps[currentStep].misconception }}</p>
+                </div>
+                <div class="before-after-card right">
+                  <span class="ba-label">{{ steps[currentStep].truthLabel || 'Truth' }}</span>
+                  <p class="ba-text">{{ steps[currentStep].truth }}</p>
+                </div>
+              </template>
+
+              <!-- Match -->
+              <template v-else-if="steps[currentStep].type === 'match' || steps[currentStep].type === 'quotematch'">
+                <p v-if="steps[currentStep].instruction" class="preview-body">{{ steps[currentStep].instruction }}</p>
+                <div v-for="pair in (steps[currentStep].pairs || [])" :key="pair.id" class="match-pair">
+                  <div class="match-left">{{ pair.left || pair.quote }}</div>
+                  <div class="match-right">{{ pair.right || pair.match }}</div>
+                </div>
+                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
+              </template>
+
+              <!-- Stat -->
+              <template v-else-if="steps[currentStep].type === 'stat'">
+                <div class="stat-display">
+                  <span class="stat-value">{{ steps[currentStep].stat }}</span>
+                  <span class="stat-label-text">{{ steps[currentStep].label }}</span>
+                </div>
+                <p class="preview-body">{{ steps[currentStep].body }}</p>
+                <p v-if="steps[currentStep].source" class="preview-source">— {{ steps[currentStep].source }}</p>
+              </template>
+
+              <!-- Scripture -->
+              <template v-else-if="steps[currentStep].type === 'scripture'">
+                <p class="scripture-ref">{{ steps[currentStep].reference }}</p>
+                <div v-for="(v, vi) in (steps[currentStep].verses || [])" :key="vi" class="scripture-verse">
+                  <span class="verse-num">{{ v.number }}</span>
+                  <span class="verse-text">{{ v.text }}</span>
+                  <p v-if="v.annotation" class="verse-annotation">{{ v.annotation }}</p>
+                </div>
+              </template>
+
+              <!-- Vocabulary -->
+              <template v-else-if="steps[currentStep].type === 'vocabulary'">
+                <h2 class="preview-heading">{{ steps[currentStep].term }}</h2>
+                <p class="preview-body">{{ steps[currentStep].definition }}</p>
+                <p v-if="steps[currentStep].etymology" class="preview-source">{{ steps[currentStep].etymology }}</p>
+                <div v-if="steps[currentStep].example" class="vocab-example">{{ steps[currentStep].example }}</div>
+              </template>
+
+              <!-- Storyboard -->
+              <template v-else-if="steps[currentStep].type === 'storyboard'">
+                <p v-if="steps[currentStep].eyebrow" class="step-eyebrow">{{ steps[currentStep].eyebrow }}</p>
+                <div v-for="(panel, pi) in (steps[currentStep].panels || [])" :key="pi" class="storyboard-panel">
+                  <h3 v-if="panel.title" class="panel-title">{{ panel.title }}</h3>
+                  <p class="panel-body">{{ typeof panel === 'string' ? panel : panel.body }}</p>
+                </div>
+              </template>
+
+              <!-- Interpretations -->
+              <template v-else-if="steps[currentStep].type === 'interpretations'">
+                <blockquote v-if="steps[currentStep].passage" class="preview-quote">"{{ steps[currentStep].passage }}"</blockquote>
+                <div v-for="(view, vi) in (steps[currentStep].views || [])" :key="vi" class="interp-view">
+                  <span class="interp-label">{{ view.label }}</span>
+                  <p class="interp-text">{{ view.interpretation }}</p>
+                </div>
+              </template>
+
+              <!-- Fill Blank -->
+              <template v-else-if="steps[currentStep].type === 'fillblank'">
+                <p class="preview-question">
+                  <template v-for="(tok, ti) in (steps[currentStep].tokens || [])" :key="ti">
+                    <span v-if="tok.isBlank" class="fill-blank">{{ tok.text }}</span>
+                    <span v-else>{{ tok.text }}</span>
+                  </template>
+                </p>
+                <div v-if="steps[currentStep].wordBank" class="preview-options">
+                  <div v-for="(w, wi) in steps[currentStep].wordBank" :key="wi" class="preview-option">{{ w }}</div>
+                </div>
+                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
+              </template>
+
+              <!-- Tap Word -->
+              <template v-else-if="steps[currentStep].type === 'tapword'">
+                <p v-if="steps[currentStep].instruction" class="preview-body">{{ steps[currentStep].instruction }}</p>
+                <div class="tapword-grid">
+                  <span v-for="tok in (steps[currentStep].tokens || [])" :key="tok.id" class="tapword-chip" :class="{ target: tok.isTarget }">{{ tok.text }}</span>
+                </div>
+                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
+              </template>
+
+              <!-- Order / Rank -->
+              <template v-else-if="steps[currentStep].type === 'order' || steps[currentStep].type === 'rank'">
+                <p v-if="steps[currentStep].instruction" class="preview-body">{{ steps[currentStep].instruction }}</p>
+                <div class="preview-options">
+                  <div v-for="(item, ii) in (steps[currentStep].items || [])" :key="item.id || ii" class="preview-option order-item">
+                    <span class="order-num">{{ ii + 1 }}</span> {{ item.text }}
                   </div>
-                </template>
+                </div>
+                <p v-if="steps[currentStep].explanation" class="preview-explanation">{{ steps[currentStep].explanation }}</p>
+              </template>
 
-                <!-- Fill Blank -->
-                <template v-else-if="steps[currentStep].type === 'fill_blank'">
-                  <p class="preview-question">{{ steps[currentStep].sentence_before }} ___ {{ steps[currentStep].sentence_after }}</p>
-                  <div class="preview-options">
-                    <div v-for="(opt, oi) in (steps[currentStep].options || [])" :key="oi" class="preview-option">
-                      {{ typeof opt === 'string' ? opt : opt.text || '' }}
-                    </div>
-                  </div>
-                </template>
+              <!-- Painting -->
+              <template v-else-if="steps[currentStep].type === 'painting'">
+                <div v-if="steps[currentStep].artwork" class="painting-header">
+                  <h2 class="preview-heading">{{ steps[currentStep].artwork.title }}</h2>
+                  <p class="preview-source">{{ steps[currentStep].artwork.artist }}, {{ steps[currentStep].artwork.year }}</p>
+                </div>
+                <div v-for="(panel, pi) in (steps[currentStep].panels || [])" :key="pi">
+                  <p class="preview-body">{{ panel }}</p>
+                </div>
+              </template>
 
-                <!-- Explanation -->
-                <template v-else-if="steps[currentStep].type === 'explanation'">
-                  <h2 class="preview-heading">{{ steps[currentStep].title }}</h2>
-                  <p class="preview-body">{{ steps[currentStep].body }}</p>
-                </template>
+              <!-- Fear-Reassurance -->
+              <template v-else-if="steps[currentStep].type === 'fear-reassurance'">
+                <div class="before-after-card wrong">
+                  <span class="ba-label">Fear</span>
+                  <p class="ba-text">{{ steps[currentStep].fear }}</p>
+                </div>
+                <div class="before-after-card right">
+                  <span class="ba-label">Reassurance</span>
+                  <p class="ba-text">{{ steps[currentStep].reassurance }}</p>
+                </div>
+                <p v-if="steps[currentStep].theologicalBasis" class="preview-explanation">{{ steps[currentStep].theologicalBasis }}</p>
+              </template>
 
-                <!-- XP Award -->
-                <template v-else-if="steps[currentStep].type === 'xp-award' || steps[currentStep].type === 'xp_award'">
-                  <div class="preview-xp">
-                    <span class="xp-number">+{{ steps[currentStep].xp || 0 }}</span>
-                    <span class="xp-label">XP</span>
-                  </div>
-                </template>
+              <!-- Concept Map -->
+              <template v-else-if="steps[currentStep].type === 'conceptmap'">
+                <h2 v-if="steps[currentStep].title" class="preview-heading">{{ steps[currentStep].title }}</h2>
+                <div v-for="(node, ni) in (steps[currentStep].nodes || [])" :key="ni" class="concept-node">
+                  <span class="concept-label">{{ node.label }}</span>
+                  <p class="concept-desc">{{ node.description }}</p>
+                </div>
+              </template>
 
-                <!-- Fallback: show raw JSON -->
-                <template v-else>
-                  <pre class="preview-json">{{ JSON.stringify(steps[currentStep], null, 2) }}</pre>
-                </template>
+              <!-- Witness -->
+              <template v-else-if="steps[currentStep].type === 'witness'">
+                <p class="preview-body">{{ steps[currentStep].body }}</p>
+                <p class="preview-source">— {{ steps[currentStep].name }}</p>
+                <p v-if="steps[currentStep].summary" class="preview-explanation">{{ steps[currentStep].summary }}</p>
+              </template>
+
+              <!-- Explanation -->
+              <template v-else-if="steps[currentStep].type === 'explanation'">
+                <h2 class="preview-heading">{{ steps[currentStep].title }}</h2>
+                <p class="preview-body">{{ steps[currentStep].body }}</p>
+              </template>
+
+              <!-- XP Award -->
+              <template v-else-if="steps[currentStep].type === 'xp-award'">
+                <div class="preview-xp">
+                  <span class="xp-number">+{{ steps[currentStep].xp || 0 }}</span>
+                  <span class="xp-label">XP</span>
+                </div>
+              </template>
+
+              <!-- Fallback -->
+              <template v-else>
+                <pre class="preview-json">{{ JSON.stringify(steps[currentStep], null, 2) }}</pre>
               </template>
             </div>
           </div>
@@ -158,6 +291,25 @@
               </template>
               <template v-else-if="block.type === 'quote'">
                 <blockquote class="ab-quote">"{{ block.text }}"</blockquote>
+                <p v-if="block.attribution" class="ab-attribution">— {{ block.attribution }}</p>
+              </template>
+              <template v-else-if="block.type === 'bullet_list'">
+                <ul class="ab-list">
+                  <li v-for="(li, li_i) in (block.items || [])" :key="li_i" v-html="li"></li>
+                </ul>
+              </template>
+              <template v-else-if="block.type === 'cross_ref'">
+                <div class="ab-crossref">
+                  <span class="crossref-icon">&#8594;</span>
+                  <span class="crossref-term">{{ block.term }}</span>
+                </div>
+              </template>
+              <template v-else-if="block.type === 'mention'">
+                <div class="ab-mention">
+                  <span class="mention-icon">&#9733;</span>
+                  <span class="mention-name">{{ block.name }}</span>
+                  <span v-if="block.entityType" class="mention-type">{{ block.entityType }}</span>
+                </div>
               </template>
               <template v-else-if="block.type === 'image'">
                 <div class="ab-image">
@@ -174,13 +326,8 @@
               <template v-else-if="block.type === 'callout'">
                 <div class="ab-callout">{{ block.text }}</div>
               </template>
-              <template v-else-if="block.type === 'list'">
-                <ul class="ab-list">
-                  <li v-for="(li, li_i) in (block.items || [])" :key="li_i">{{ li }}</li>
-                </ul>
-              </template>
               <template v-else>
-                <div class="ab-generic">[{{ block.type }}] {{ block.text || '' }}</div>
+                <div class="ab-generic">[{{ block.type }}] {{ block.text || JSON.stringify(block) }}</div>
               </template>
             </div>
           </div>
@@ -570,6 +717,305 @@ async function handleSave() {
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.preview-explanation {
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-3);
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.scenario-text {
+  margin-bottom: 14px;
+  padding: 12px;
+  background: var(--surface);
+  border-radius: 6px;
+}
+
+/* Before-After / Fear-Reassurance */
+.before-after-card {
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.before-after-card.wrong { background: rgba(255, 59, 48, 0.08); }
+.before-after-card.right { background: rgba(52, 199, 89, 0.08); }
+.ba-label {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-3);
+  display: block;
+  margin-bottom: 6px;
+}
+.ba-text {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+  margin: 0;
+}
+
+/* Match pairs */
+.match-pair {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.match-left, .match-right {
+  flex: 1;
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 10px;
+  border-radius: 6px;
+  color: var(--text-2);
+}
+.match-left { background: var(--surface); }
+.match-right { background: rgba(52, 199, 89, 0.08); }
+
+/* Stat */
+.stat-display {
+  text-align: center;
+  margin-bottom: 14px;
+}
+.stat-value {
+  font-family: var(--sans);
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--gold-light);
+  display: block;
+}
+.stat-label-text {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Scripture */
+.scripture-ref {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold-light);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px;
+}
+.scripture-verse { margin-bottom: 8px; }
+.verse-num {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold-light);
+  vertical-align: super;
+  margin-right: 4px;
+}
+.verse-text {
+  font-family: var(--serif);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.verse-annotation {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--text-3);
+  font-style: italic;
+  margin: 4px 0 0;
+  padding-left: 14px;
+}
+
+/* Vocabulary */
+.vocab-example {
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-2);
+  background: var(--surface);
+  padding: 10px;
+  border-radius: 6px;
+  margin-top: 10px;
+}
+
+/* Storyboard */
+.step-eyebrow {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold-light);
+  margin: 0 0 12px;
+}
+.storyboard-panel {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.storyboard-panel:last-child { border-bottom: none; }
+.panel-title {
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+.panel-body {
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-2);
+  margin: 0;
+}
+
+/* Interpretations */
+.interp-view {
+  margin-bottom: 10px;
+  padding: 10px;
+  background: var(--surface);
+  border-radius: 6px;
+}
+.interp-label {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold-light);
+  display: block;
+  margin-bottom: 4px;
+}
+.interp-text {
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-2);
+  margin: 0;
+}
+
+/* Fill blank */
+.fill-blank {
+  background: var(--gold);
+  color: var(--bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* Tap word */
+.tapword-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.tapword-chip {
+  font-family: var(--sans);
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-2);
+}
+.tapword-chip.target {
+  border-color: #34C759;
+  color: #34C759;
+}
+
+/* Order items */
+.order-item { display: flex; align-items: baseline; gap: 8px; }
+.order-num {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--gold-light);
+  flex-shrink: 0;
+}
+
+/* Concept map */
+.concept-node {
+  padding: 10px;
+  background: var(--surface);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+.concept-label {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  display: block;
+  margin-bottom: 4px;
+}
+.concept-desc {
+  font-family: var(--sans);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-3);
+  margin: 0;
+}
+
+/* Article: cross_ref, mention */
+.ab-crossref {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: 6px;
+  border-left: 2px solid var(--gold);
+}
+.crossref-icon {
+  color: var(--gold-light);
+  font-size: 14px;
+}
+.crossref-term {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gold-light);
+}
+
+.ab-mention {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--raised);
+  border-radius: 6px;
+}
+.mention-icon {
+  color: var(--gold-light);
+  font-size: 12px;
+}
+.mention-name {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.mention-type {
+  font-family: var(--sans);
+  font-size: 10px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ab-attribution {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 6px;
+  font-style: italic;
 }
 
 .phone-nav {
