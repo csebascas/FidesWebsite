@@ -147,6 +147,7 @@
                 <h2 class="preview-heading">{{ steps[currentStep].term }}</h2>
                 <p class="preview-body">{{ steps[currentStep].definition }}</p>
                 <p v-if="steps[currentStep].etymology" class="preview-source">{{ steps[currentStep].etymology }}</p>
+                <div v-if="steps[currentStep].context" class="vocab-example">{{ steps[currentStep].context }}</div>
                 <div v-if="steps[currentStep].example" class="vocab-example">{{ steps[currentStep].example }}</div>
               </template>
 
@@ -207,6 +208,8 @@
                 <div v-if="steps[currentStep].artwork" class="painting-header">
                   <h2 class="preview-heading">{{ steps[currentStep].artwork.title }}</h2>
                   <p class="preview-source">{{ steps[currentStep].artwork.artist }}, {{ steps[currentStep].artwork.year }}</p>
+                  <img v-if="steps[currentStep].artwork.image_url" :src="steps[currentStep].artwork.image_url" :alt="steps[currentStep].artwork.title" class="painting-img" />
+                  <p v-if="steps[currentStep].artwork.caption" class="preview-source">{{ steps[currentStep].artwork.caption }}</p>
                 </div>
                 <div v-for="(panel, pi) in (steps[currentStep].panels || [])" :key="pi">
                   <p class="preview-body">{{ panel }}</p>
@@ -601,6 +604,8 @@ async function handleSave() {
 .phone-content {
   padding: 16px 20px;
   min-height: 360px;
+  max-height: 520px;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
@@ -961,6 +966,13 @@ async function handleSave() {
   line-height: 1.5;
   color: var(--text-3);
   margin: 0;
+}
+
+/* Painting image */
+.painting-img {
+  width: 100%;
+  border-radius: 6px;
+  margin: 10px 0;
 }
 
 /* Article: cross_ref, mention */
