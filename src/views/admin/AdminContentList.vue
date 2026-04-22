@@ -88,6 +88,23 @@
             <label>Title</label>
             <input v-model="createFields.title" class="modal-input" placeholder="Lesson title" />
           </div>
+          <div v-if="contentType === 'articles'" class="modal-field">
+            <label>Title</label>
+            <input v-model="createFields.title" class="modal-input" placeholder="Article title" />
+          </div>
+          <div v-if="contentType === 'articles'" class="modal-field">
+            <label>Type</label>
+            <select v-model="createFields.type" class="modal-input">
+              <option value="article">Article</option>
+              <option value="question">Question</option>
+              <option value="cheatsheet">Cheatsheet</option>
+              <option value="guide">Guide</option>
+            </select>
+          </div>
+          <div v-if="contentType === 'articles'" class="modal-field">
+            <label>Category</label>
+            <input v-model="createFields.category" class="modal-input" placeholder="e.g. Doctrine, Scripture" />
+          </div>
           <div v-if="contentType === 'tracks'" class="modal-field">
             <label>Pillar</label>
             <select v-model="createFields.pillar_id" class="modal-input">
@@ -235,18 +252,22 @@ function goToEdit(id: string) {
 }
 
 const NEW_DEFAULTS: Record<string, Record<string, any>> = {
-  lessons: { title: 'Untitled Lesson', sort_order: 0, active: false },
-  articles: { title: 'Untitled Article', slug: `new-article-${Date.now()}`, type: 'article', summary: '', body: [] },
-  entries: { term: 'New Term', type: 'doctrine', definition: '' },
+  lessons: { title: 'Untitled Lesson', sort_order: 0, active: true, content: [], xp_reward: 25, estimated_minutes: 5 },
+  articles: { title: 'Untitled Article', slug: `new-article-${Date.now()}`, type: 'article', summary: 'New article', body: [], published: false },
+  entries: { term: 'New Term', type: 'doctrine', definition: 'Definition here' },
   saints: { name: 'New Saint', unlock_method: 'track_completion', rarity: 'common' },
-  tracks: { name: 'New Track', sort_order: 0, active: false },
-  pillars: { name: 'New Pillar', slug: `new-pillar-${Date.now()}`, color: '#C8A55A', sort_order: 0 },
+  tracks: { name: 'New Track', sort_order: 0, active: true },
+  pillars: { name: 'New Pillar', slug: `new-pillar-${Date.now()}`, color: '#C8A55A', sort_order: 0, active: true },
 }
 
 function handleCreate() {
-  // Types that need required fields show a modal first
   if (contentType.value === 'lessons') {
     createFields.value = { title: '', track_id: '' }
+    showCreateModal.value = true
+    return
+  }
+  if (contentType.value === 'articles') {
+    createFields.value = { title: '', type: 'article', category: '' }
     showCreateModal.value = true
     return
   }
@@ -255,7 +276,6 @@ function handleCreate() {
     showCreateModal.value = true
     return
   }
-  // Others can create directly
   doCreate()
 }
 
@@ -265,8 +285,13 @@ async function doCreate() {
 
   creating.value = true
   const insertData = { ...defaults, ...createFields.value }
-  if (contentType.value === 'articles') insertData.slug = `new-article-${Date.now()}`
-  else if (contentType.value === 'pillars') insertData.slug = `new-pillar-${Date.now()}`
+  if (contentType.value === 'articles') {
+    const title = insertData.title || 'untitled'
+    insertData.slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now()
+    if (!insertData.summary) insertData.summary = insertData.title || 'New article'
+  } else if (contentType.value === 'pillars') {
+    insertData.slug = `new-pillar-${Date.now()}`
+  }
 
   // Remove empty strings for required FK fields
   for (const [k, v] of Object.entries(insertData)) {

@@ -71,30 +71,53 @@
           <span class="detail-label">ID</span>
           <span class="detail-value mono">{{ selectedUser.id }}</span>
         </div>
-        <div class="detail-row">
-          <span class="detail-label">Tier</span>
-          <span class="tier-badge" :class="selectedUser.subscription_tier">{{ selectedUser.subscription_tier }}</span>
+        <div class="detail-edit-section">
+          <h4 class="detail-section-title">Profile</h4>
+          <div class="detail-field">
+            <label>Display Name</label>
+            <input v-model="selectedUser.display_name" class="detail-input" />
+          </div>
+          <div class="detail-field">
+            <label>Tier</label>
+            <select v-model="selectedUser.subscription_tier" class="detail-input">
+              <option value="free">Free</option>
+              <option value="pro">Pro</option>
+            </select>
+          </div>
+          <div class="detail-field-row">
+            <div class="detail-field">
+              <label>XP</label>
+              <input v-model.number="selectedUser.xp" class="detail-input" type="number" />
+            </div>
+            <div class="detail-field">
+              <label>Level</label>
+              <input v-model.number="selectedUser.level" class="detail-input" type="number" />
+            </div>
+          </div>
+          <div class="detail-field">
+            <label>League</label>
+            <select v-model="selectedUser.league" class="detail-input">
+              <option value="bronze">Bronze</option>
+              <option value="silver">Silver</option>
+              <option value="gold">Gold</option>
+              <option value="platinum">Platinum</option>
+              <option value="diamond">Diamond</option>
+            </select>
+          </div>
+          <div class="detail-field-row">
+            <div class="detail-field">
+              <label>Streak</label>
+              <input v-model.number="selectedUser.streak_current" class="detail-input" type="number" />
+            </div>
+            <div class="detail-field">
+              <label>Best Streak</label>
+              <input v-model.number="selectedUser.streak_longest" class="detail-input" type="number" />
+            </div>
+          </div>
+          <button class="btn-save" @click="saveUser" :disabled="savingUser">{{ savingUser ? 'Saving...' : 'Save Changes' }}</button>
+          <span v-if="userSaveMsg" class="save-msg" :class="userSaveErr ? 'err' : 'ok'">{{ userSaveMsg }}</span>
         </div>
-        <div class="detail-row">
-          <span class="detail-label">XP</span>
-          <span class="detail-value">{{ selectedUser.xp?.toLocaleString() }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Level</span>
-          <span class="detail-value">{{ selectedUser.level }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">League</span>
-          <span class="league-badge" :class="selectedUser.league">{{ selectedUser.league }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Streak</span>
-          <span class="detail-value">{{ selectedUser.streak_current }} (best: {{ selectedUser.streak_longest }})</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">Last Streak</span>
-          <span class="detail-value">{{ selectedUser.streak_last_date || '—' }}</span>
-        </div>
+
         <div class="detail-row">
           <span class="detail-label">Onboarded</span>
           <span class="bool-badge" :class="selectedUser.onboarding_completed ? 'yes' : 'no'">{{ selectedUser.onboarding_completed ? 'Yes' : 'No' }}</span>
@@ -149,6 +172,24 @@ const selectedUser = ref<any>(null)
 const userProgress = ref<any[]>([])
 const deleteTarget = ref<any>(null)
 const deleting = ref(false)
+const savingUser = ref(false)
+const userSaveMsg = ref('')
+const userSaveErr = ref(false)
+
+async function saveUser() {
+  if (!selectedUser.value) return
+  savingUser.value = true
+  userSaveMsg.value = ''
+  userSaveErr.value = false
+  const { display_name, subscription_tier, xp, level, league, streak_current, streak_longest } = selectedUser.value
+  const { error } = await adminRpc({
+    action: 'update', table: 'users', id: selectedUser.value.id,
+    data: { display_name, subscription_tier, xp, level, league, streak_current, streak_longest },
+  })
+  if (error) { userSaveErr.value = true; userSaveMsg.value = `Failed: ${error}` }
+  else { userSaveMsg.value = 'Saved.' }
+  savingUser.value = false
+}
 
 function formatDate(d: string) {
   if (!d) return '—'
@@ -325,6 +366,26 @@ onMounted(async () => {
   display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--line);
   font-family: var(--sans); font-size: 12px; color: var(--text-2);
 }
+.detail-edit-section { margin-bottom: 16px; }
+.detail-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.detail-field label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-3); }
+.detail-input {
+  font-family: var(--sans); font-size: 13px; color: var(--text); padding: 8px 10px;
+  background: var(--raised); border: 1px solid var(--line); border-radius: 4px; outline: none; width: 100%;
+}
+.detail-input:focus { border-color: var(--gold); }
+.detail-field-row { display: flex; gap: 8px; }
+.detail-field-row .detail-field { flex: 1; }
+.btn-save {
+  font-family: var(--sans); font-size: 12px; font-weight: 600; padding: 8px 16px;
+  border-radius: 6px; border: none; background: var(--gold); color: var(--bg); cursor: pointer; margin-top: 4px;
+}
+.btn-save:hover { opacity: 0.9; }
+.btn-save:disabled { opacity: 0.5; }
+.save-msg { font-family: var(--sans); font-size: 12px; margin-left: 8px; }
+.save-msg.ok { color: #34C759; }
+.save-msg.err { color: #FF3B30; }
+
 .detail-actions { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
 
 .btn-danger {

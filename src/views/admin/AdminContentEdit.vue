@@ -379,7 +379,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRoute } from 'vue-router'
-import { supabase, TABLE_MAP, adminRpc } from '../../lib/supabase'
+import { adminRpc } from '../../lib/supabase'
 import StepEditor from '../../components/StepEditor.vue'
 import BlockEditor from '../../components/BlockEditor.vue'
 
@@ -413,15 +413,15 @@ function isLongText(value: any): boolean {
 }
 
 onMounted(async () => {
-  const tableName = TABLE_MAP[contentType.value] || contentType.value
   try {
-    const { data: row, error } = await supabase
-      .from(tableName)
-      .select('*')
-      .eq('id', contentId.value)
-      .single()
+    // Use adminRpc to bypass RLS (e.g. active=false lessons, unpublished articles)
+    const result = await adminRpc({
+      action: 'select', table: contentType.value,
+      match: { id: contentId.value }, limit: 1,
+    })
+    const row = result.data?.[0]
 
-    if (error || !row) {
+    if (!row) {
       loading.value = false
       return
     }
