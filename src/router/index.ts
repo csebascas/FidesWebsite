@@ -27,6 +27,14 @@ const routes = [
     },
   },
   {
+    path: '/download',
+    component: () => import('../views/Download.vue'),
+    meta: {
+      title: 'Download Fides',
+      description: 'Download the Fides app for iOS or Android. Learn the Catholic faith in 5 minutes a day.',
+    },
+  },
+  {
     path: '/d/login',
     component: () => import('../views/admin/AdminLogin.vue'),
     meta: {
@@ -61,6 +69,11 @@ const routes = [
         path: 'content/:type/:id',
         component: () => import('../views/admin/AdminContentEdit.vue'),
         meta: { title: 'Edit Content — Fides Admin', requiresAuth: true },
+      },
+      {
+        path: 'downloads',
+        component: () => import('../views/admin/AdminDownloads.vue'),
+        meta: { title: 'Downloads — Fides Admin', requiresAuth: true },
       },
       {
         path: 'users',

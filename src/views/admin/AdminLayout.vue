@@ -32,6 +32,7 @@
         <div class="nav-divider"></div>
         <span class="nav-section">Management</span>
 
+        <router-link to="/d/downloads" class="nav-item" @click="closeSidebar">Downloads</router-link>
         <router-link to="/d/users" class="nav-item" @click="closeSidebar">Users</router-link>
         <router-link to="/d/feedback" class="nav-item" @click="closeSidebar">Feedback</router-link>
       </nav>

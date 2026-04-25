@@ -21,7 +21,7 @@ onMounted(() => {
     <RouterLink to="/" class="nav-wordmark">Fides</RouterLink>
     <div class="nav-right">
       <a href="#learn" class="nav-link">How it works</a>
-      <a href="#" class="nav-download">Download</a>
+      <RouterLink to="/download" class="nav-download">Download</RouterLink>
     </div>
   </nav>
 
@@ -35,11 +35,11 @@ onMounted(() => {
         200+ lessons. 7 pillars of theology. 5 minutes a day.
       </p>
       <div class="hero-actions">
-        <a href="#" class="cta-btn">
+        <a href="https://apps.apple.com/us/app/fides-catholic-apologetics/id6761725633" class="cta-btn">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
           iOS
         </a>
-        <a href="#" class="cta-btn cta-btn--android">
+        <a href="https://play.google.com/store/apps/details?id=com.liaxo.fides" class="cta-btn cta-btn--android">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 2.236l1.442-1.442a.552.552 0 00-.78-.78L16.6 1.6a6.42 6.42 0 00-4.6-1.6 6.42 6.42 0 00-4.6 1.6L5.815.014a.552.552 0 00-.78.78L6.477 2.236A6.36 6.36 0 004 7h16a6.36 6.36 0 00-2.477-4.764zM9 5a1 1 0 110-2 1 1 0 010 2zm6 0a1 1 0 110-2 1 1 0 010 2zM4 8v10a1 1 0 001 1h1v3.5a1.5 1.5 0 003 0V19h6v3.5a1.5 1.5 0 003 0V19h1a1 1 0 001-1V8H4zm-3 0a1.5 1.5 0 00-1.5 1.5v7a1.5 1.5 0 003 0v-7A1.5 1.5 0 001 8zm22 0a1.5 1.5 0 00-1.5 1.5v7a1.5 1.5 0 003 0v-7A1.5 1.5 0 0023 8z"/></svg>
           Android
         </a>
@@ -182,11 +182,11 @@ onMounted(() => {
     <h2>Your faith deserves<br />more than Sunday.</h2>
     <p>Free to download. No credit card required.</p>
     <div class="cta-buttons">
-      <a href="#" class="cta-btn cta-btn--lg">
+      <a href="https://apps.apple.com/us/app/fides-catholic-apologetics/id6761725633" class="cta-btn cta-btn--lg">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
         iOS
       </a>
-      <a href="#" class="cta-btn cta-btn--lg cta-btn--android">
+      <a href="https://play.google.com/store/apps/details?id=com.liaxo.fides" class="cta-btn cta-btn--lg cta-btn--android">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 2.236l1.442-1.442a.552.552 0 00-.78-.78L16.6 1.6a6.42 6.42 0 00-4.6-1.6 6.42 6.42 0 00-4.6 1.6L5.815.014a.552.552 0 00-.78.78L6.477 2.236A6.36 6.36 0 004 7h16a6.36 6.36 0 00-2.477-4.764zM9 5a1 1 0 110-2 1 1 0 010 2zm6 0a1 1 0 110-2 1 1 0 010 2zM4 8v10a1 1 0 001 1h1v3.5a1.5 1.5 0 003 0V19h6v3.5a1.5 1.5 0 003 0V19h1a1 1 0 001-1V8H4zm-3 0a1.5 1.5 0 00-1.5 1.5v7a1.5 1.5 0 003 0v-7A1.5 1.5 0 001 8zm22 0a1.5 1.5 0 00-1.5 1.5v7a1.5 1.5 0 003 0v-7A1.5 1.5 0 0023 8z"/></svg>
         Android
       </a>
