@@ -71,7 +71,7 @@
           <h2 class="section-title">Top Sources</h2>
           <div class="top-list">
             <div v-for="(r, i) in data.topReferrers" :key="r.source" class="top-row">
-              <span class="top-rank">{{ i + 1 }}</span>
+              <span class="top-rank">{{ Number(i) + 1 }}</span>
               <span class="top-name">{{ r.source }}</span>
               <div class="bar-wrap"><div class="bar" :style="{ width: pct(r.count, data.topReferrers[0].count) + '%' }"></div></div>
               <span class="top-count">{{ r.count }}</span>
@@ -84,7 +84,7 @@
           <h2 class="section-title">Campaigns</h2>
           <div class="top-list">
             <div v-for="(c, i) in data.topCampaigns" :key="c.campaign" class="top-row">
-              <span class="top-rank">{{ i + 1 }}</span>
+              <span class="top-rank">{{ Number(i) + 1 }}</span>
               <span class="top-name">{{ c.campaign }}</span>
               <div class="bar-wrap"><div class="bar bar-campaign" :style="{ width: pct(c.count, data.topCampaigns[0].count) + '%' }"></div></div>
               <span class="top-count">{{ c.count }}</span>
@@ -119,7 +119,7 @@
           <h2 class="section-title">Top Countries</h2>
           <div class="top-list">
             <div v-for="(c, i) in data.topCountries" :key="c.country" class="top-row">
-              <span class="top-rank">{{ i + 1 }}</span>
+              <span class="top-rank">{{ Number(i) + 1 }}</span>
               <span class="top-name">{{ countryName(c.country) }}</span>
               <div class="bar-wrap"><div class="bar bar-geo" :style="{ width: pct(c.count, data.topCountries[0].count) + '%' }"></div></div>
               <span class="top-count">{{ c.count }}</span>
@@ -132,7 +132,7 @@
           <h2 class="section-title">Top Cities</h2>
           <div class="top-list">
             <div v-for="(c, i) in data.topCities.slice(0, 10)" :key="c.city" class="top-row">
-              <span class="top-rank">{{ i + 1 }}</span>
+              <span class="top-rank">{{ Number(i) + 1 }}</span>
               <span class="top-name">{{ c.city }}</span>
               <div class="bar-wrap"><div class="bar bar-geo" :style="{ width: pct(c.count, data.topCities[0].count) + '%' }"></div></div>
               <span class="top-count">{{ c.count }}</span>
