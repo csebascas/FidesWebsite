@@ -71,11 +71,11 @@ function openStore(platform: 'ios' | 'android') {
 }
 
 function redirect(platform: 'ios' | 'android' | 'unknown') {
-  trackClick(platform)
-
   if (platform === 'ios' || platform === 'android') {
+    trackClick(platform)
     openStore(platform)
   } else {
+    // Desktop/unknown — don't track, just show platform picker
     redirecting.value = false
   }
 }
