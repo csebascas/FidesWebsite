@@ -35,6 +35,14 @@ const routes = [
     },
   },
   {
+    path: '/i/:code',
+    component: () => import('../views/Invite.vue'),
+    meta: {
+      title: 'You\'ve been invited to Fides',
+      description: 'A friend invited you to Fides. Sign up via this link and you both get 1 month of Pro free.',
+    },
+  },
+  {
     path: '/d/login',
     component: () => import('../views/admin/AdminLogin.vue'),
     meta: {

@@ -1,0 +1,13 @@
+[
+  {
+    "_comment": "Android App Links manifest. Drop the SHA-256 fingerprint of your Play Store upload key (or, if Play Signing is enabled, the App signing key) into sha256_cert_fingerprints. Find it in Play Console → Setup → App signing → 'SHA-256 certificate fingerprint'.",
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.liaxo.fides",
+      "sha256_cert_fingerprints": [
+        "8F:89:2B:E5:30:61:C3:CC:8C:08:4C:66:83:D9:4F:0B:CA:60:77:F5:2B:5E:65:57:B8:F1:35:A7:F5:BC:34:3B"
+      ]
+    }
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["5ZTARFVF85.com.liaxo.fides"],
+        "components": [
+          {
+            "/": "/i/*",
+            "comment": "Invite handshake — opens the Fides app with the referral code in the URL"
+          },
+          {
+            "/": "/download",
+            "comment": "Universal link to app from /download page (post-install reopen)"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["5ZTARFVF85.com.liaxo.fides"]
+  }
+}
