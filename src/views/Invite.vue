@@ -93,7 +93,7 @@ const sub = computed(() => {
 const rewardLine = computed(() => {
   if (notFound.value || !inviterName.value) return null
   const first = inviterName.value.split(' ')[0]
-  return `Sign up via this link and ${first} will be your first friend on Fides — plus you both get 1 month of Pro free.`
+  return `Sign up via this link and ${first} will be your first friend on Fides — plus you both get 2 weeks of Pro free.`
 })
 
 onMounted(() => {
