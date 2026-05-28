@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 
 // iOS: https:// link on iOS Safari auto-opens the native App Store app
-const IOS_URL = 'https://apps.apple.com/us/app/fides-catholic-apologetics/id6761725633'
+const IOS_URL = 'https://apps.apple.com/us/app/fides-catholic-faith/id6761725633'
 // Android: intent:// opens the native Play Store app directly from Chrome.
 // Chrome blocks market:// from web pages, so intent:// is required.
 // S.browser_fallback_url handles devices without Google Play (Huawei, etc.)

@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 // ── Store links (same constants as Download.vue) ──────────────────────────
-const IOS_URL = 'https://apps.apple.com/us/app/fides-catholic-apologetics/id6761725633'
+const IOS_URL = 'https://apps.apple.com/us/app/fides-catholic-faith/id6761725633'
 const ANDROID_INTENT = 'intent://details?id=com.liaxo.fides#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.liaxo.fides;end'
 const ANDROID_FALLBACK = 'https://play.google.com/store/apps/details?id=com.liaxo.fides'
 
