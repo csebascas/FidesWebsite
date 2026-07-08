@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fides — Dashboard Redesign Spec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-base:#0C0C0C; --bg-surface:#181818; --bg-raised:#222222;
+    --divider:#1A1A1A; --text-1:#F2EDE4; --text-2:#8A847A; --text-3:#52504C;
+    --gold:#C4912C; --gold-text:#E8B44E;
+    --gold-08:rgba(196,145,44,0.08); --gold-12:rgba(196,145,44,0.12);
+    --flame:#D4673A; --ok:#7FB08A;
+    --serif:'Playfair Display',serif; --sans:'DM Sans',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#060606;color:var(--text-1);font-family:var(--sans);padding:48px 40px 120px;}
+  h1{font-family:var(--serif);font-size:34px;font-weight:700;margin-bottom:6px;}
+  .sub{color:var(--text-2);font-size:14px;margin-bottom:40px;max-width:760px;line-height:1.5;}
+  .sub b{color:var(--text-1);}
+  h2{font-family:var(--serif);font-size:22px;font-weight:600;margin:64px 0 8px;}
+  h2 .chip{font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--gold-text);background:var(--gold-12);padding:4px 10px;border-radius:100px;vertical-align:3px;margin-left:10px;}
+  .note{color:var(--text-2);font-size:13px;line-height:1.6;max-width:720px;margin-bottom:28px;}
+  .note b{color:var(--text-1);font-weight:600;}
+  .note code{background:var(--bg-raised);padding:1px 6px;border-radius:4px;font-size:12px;color:var(--gold-text);}
+
+  table{border-collapse:collapse;width:100%;max-width:1020px;font-size:12.5px;margin-bottom:8px;}
+  th{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-3);text-align:left;padding:10px 14px;border-bottom:1px solid var(--divider);}
+  td{padding:11px 14px;border-bottom:0.5px solid var(--divider);color:var(--text-2);vertical-align:top;line-height:1.45;}
+  td:first-child{color:var(--text-1);font-weight:500;}
+  td code{background:var(--bg-raised);padding:1px 6px;border-radius:4px;font-size:11.5px;color:var(--gold-text);white-space:nowrap;}
+  .bad{color:var(--flame);} .good{color:var(--ok);}
+
+  .row{display:flex;gap:44px;align-items:flex-start;flex-wrap:wrap;}
+  .col{display:flex;flex-direction:column;gap:10px;}
+  .col .tag{font-size:10px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--gold-text);}
+
+  .spec{flex:1;min-width:300px;max-width:440px;}
+  .spec h3{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-3);margin:18px 0 8px;}
+  .spec h3.conv{color:#82c7a3;}
+  .spec ul{list-style:none;}
+  .spec li{font-size:12.5px;color:var(--text-2);padding:7px 0;border-bottom:0.5px solid var(--divider);display:flex;justify-content:space-between;gap:16px;line-height:1.45;}
+  .spec li b{color:var(--text-1);font-weight:500;flex-shrink:0;}
+  .spec li span{text-align:right;}
+
+  svg.i{display:block;flex-shrink:0;}
+
+  /* ============ LOGIN MOCKUP ============ */
+  .browser{width:520px;background:var(--bg-base);border:1px solid #262626;border-radius:12px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,0.6);flex-shrink:0;}
+  .browser.wide{width:1180px;max-width:100%;}
+  .browser-bar{height:34px;background:#111;display:flex;align-items:center;gap:6px;padding:0 14px;border-bottom:1px solid var(--divider);}
+  .browser-bar .dot{width:9px;height:9px;border-radius:50%;background:#2c2c2c;}
+  .browser-bar .url{margin-left:12px;font-size:11px;color:var(--text-3);background:var(--bg-surface);border-radius:5px;padding:3px 12px;}
+
+  .login-stage{min-height:560px;display:flex;align-items:center;justify-content:center;position:relative;background:var(--bg-base);}
+  .login-glow{position:absolute;top:60px;left:50%;transform:translateX(-50%);width:420px;height:300px;background:radial-gradient(closest-side, rgba(196,145,44,0.10), transparent);pointer-events:none;}
+  .login-box{width:320px;position:relative;}
+  .login-kicker{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--gold-text);text-align:center;}
+  .login-word{font-family:var(--serif);font-size:32px;font-weight:700;text-align:center;margin:6px 0 26px;}
+  .field label{display:block;font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-3);margin:0 0 6px;}
+  .field .input{background:var(--bg-raised);border-radius:6px;padding:12px 14px;font-size:13.5px;color:var(--text-1);margin-bottom:14px;}
+  .field .input.placeholder{color:var(--text-3);}
+  .field .input.focus{outline:1px solid var(--gold);color:var(--text-1);}
+  .login-cta{background:var(--gold);color:#0C0C0C;border-radius:6px;padding:13px;text-align:center;font-size:14px;font-weight:700;margin-top:4px;}
+  .login-foot{text-align:center;color:var(--text-3);font-size:10.5px;margin-top:14px;line-height:1.6;}
+
+  /* ============ DASHBOARD SHELL ============ */
+  .shell{display:flex;min-height:720px;background:var(--bg-base);text-align:left;}
+
+  .snav{width:198px;flex-shrink:0;display:flex;flex-direction:column;border-right:0.5px solid var(--divider);padding:20px 0 16px;}
+  .snav .word{font-family:var(--serif);font-size:17px;font-weight:700;color:var(--text-1);padding:0 18px;margin-bottom:22px;}
+  .snav .word em{font-style:normal;color:var(--gold-text);}
+  .sitem{display:flex;align-items:center;gap:10px;padding:8px 18px;font-size:12.5px;color:var(--text-2);position:relative;}
+  .sitem svg{opacity:0.75;}
+  .sitem.on{color:var(--gold-text);}
+  .sitem.on::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:2px;background:var(--gold);}
+  .sitem.on svg{opacity:1;}
+  .ssec{font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--text-3);padding:18px 18px 6px;}
+  .snav .grow{flex:1;}
+  .swho{margin:0 12px;padding:10px 8px 2px;border-top:0.5px solid var(--divider);display:flex;align-items:center;gap:9px;}
+  .avatar{width:26px;height:26px;border-radius:13px;background:var(--gold-08);color:var(--gold-text);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .swho .em{flex:1;min-width:0;font-size:10.5px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+  .smain{flex:1;padding:26px 34px 34px;min-width:0;}
+  .shead{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
+  .shead h1{font-family:var(--serif);font-size:23px;font-weight:600;margin:0;}
+  .shead .date{font-size:11px;color:var(--text-3);margin-top:3px;font-family:var(--sans);}
+  .searchpill{display:flex;align-items:center;gap:8px;background:var(--bg-surface);border-radius:6px;padding:7px 12px;font-size:11.5px;color:var(--text-3);}
+  .searchpill kbd{font-family:var(--sans);font-size:9.5px;background:var(--bg-raised);border-radius:4px;padding:2px 6px;color:var(--text-2);}
+
+  .statstrip{display:flex;background:var(--bg-surface);border-radius:10px;padding:18px 0;margin-bottom:26px;}
+  .stat{flex:1;padding:0 22px;border-right:0.5px solid #242424;}
+  .stat:last-child{border-right:none;}
+  .stat .n{font-size:24px;font-weight:700;letter-spacing:-0.3px;}
+  .stat .n.gold{color:var(--gold-text);}
+  .stat .l{font-size:9.5px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--text-3);margin-top:3px;}
+  .stat .d{font-size:10px;margin-top:4px;color:var(--ok);}
+  .stat .d.flat{color:var(--text-3);}
+
+  .cols{display:grid;grid-template-columns:1.15fr 1fr;gap:34px;}
+  .sect{margin-bottom:26px;}
+  .sect-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;}
+  .sect-title{font-size:10px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--text-3);}
+  .sect-more{font-size:10.5px;color:var(--text-3);}
+
+  .feed .frow{display:flex;align-items:center;gap:11px;padding:9px 2px;border-bottom:0.5px solid var(--divider);font-size:12px;color:var(--text-2);}
+  .feed .frow:last-child{border-bottom:none;}
+  .fava{width:22px;height:22px;border-radius:11px;background:var(--bg-raised);color:var(--text-2);font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .fava.gold{background:var(--gold-08);color:var(--gold-text);}
+  .ftext{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ftext b{color:var(--text-1);font-weight:600;}
+  .ftext .lk{color:var(--gold-text);}
+  .ftime{font-size:10.5px;color:var(--text-3);flex-shrink:0;}
+
+  .warn{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:0.5px solid var(--divider);font-size:12px;}
+  .warn:last-child{border-bottom:none;}
+  .wdot{width:5px;height:5px;border-radius:2.5px;background:var(--flame);flex-shrink:0;}
+  .wtype{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-3);width:44px;flex-shrink:0;}
+  .wname{flex:1;color:var(--text-1);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .wissue{font-size:10.5px;color:var(--text-3);flex-shrink:0;}
+  .allok{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ok);padding:9px 2px;}
+
+  .cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .ctile{background:var(--bg-surface);border-radius:10px;padding:13px 15px;}
+  .ctile.hover{background:var(--bg-raised);}
+  .ctile .n{font-size:19px;font-weight:700;}
+  .ctile .l{font-size:9.5px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-3);margin-top:2px;}
+
+  .rank{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:0.5px solid var(--divider);font-size:12px;}
+  .rank:last-child{border-bottom:none;}
+  .rank .r{width:16px;text-align:center;font-size:10.5px;font-weight:700;color:var(--gold-text);flex-shrink:0;}
+  .rank .t{flex:1;color:var(--text-1);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--serif);font-size:12.5px;}
+  .rank .tr{font-size:10px;color:var(--text-3);flex-shrink:0;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rank .c{width:26px;text-align:right;font-weight:600;color:var(--text-2);flex-shrink:0;font-variant-numeric:tabular-nums;}
+
+  .bar-row{display:flex;align-items:center;gap:10px;padding:7px 2px;font-size:11.5px;}
+  .bar-row .bn{width:96px;color:var(--text-2);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .bar-wrap{flex:1;height:4px;background:var(--bg-raised);border-radius:2px;overflow:hidden;}
+  .bar{height:100%;background:var(--gold);border-radius:2px;}
+  .bar-row .bc{width:30px;text-align:right;font-weight:600;color:var(--text-2);flex-shrink:0;font-variant-numeric:tabular-nums;font-size:11px;}
+</style>
+</head>
+<body>
+
+<h1>Dashboard Redesign</h1>
+<p class="sub">The admin dashboard, restyled to the app's design system and simplified for <b>two admins</b>. Three moves: <b>1)</b> one-step sign-in (the access-code pre-gate goes away — the email allowlist + password already does that job), <b>2)</b> de-chunked UI — boxed-and-bordered cards become hairline rows and one quiet stat strip, exactly like the app's stats surfaces, <b>3)</b> Ryan (<code>ryanjburke34@gmail.com</code>) added as a first-class admin with his own credentials — no shared passwords.</p>
+
+<!-- ==================== SIGN IN ==================== -->
+<h2>Sign in — one step <span class="chip">REPLACES CODE-GATE + LOGIN</span></h2>
+<p class="note">Today you type an access code, then an email, then a password — three secrets across two screens. The redesign is one screen: email + password against the Supabase auth user, checked against the two-address allowlist. Fewer steps, same wall. Sessions last 30 days so you're not re-logging in weekly.</p>
+
+<div class="row">
+  <div class="col">
+    <div class="tag">Login · joinfides.com/d/login</div>
+    <div class="browser">
+      <div class="browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">joinfides.com/d/login</span></div>
+      <div class="login-stage">
+        <div class="login-glow"></div>
+        <div class="login-box">
+          <div class="login-word">Fides</div>
+          <div class="field">
+            <label>Email</label>
+            <div class="input focus">ryanjburke34@gmail.com</div>
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <div class="input placeholder">••••••••••••</div>
+          </div>
+          <div class="login-cta">Sign in</div>
+          <div class="login-foot">Access limited to authorized admins.<br>Stays signed in for 30 days on this device.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="spec">
+    <h3>Styling — element by element</h3>
+    <ul>
+      <li><b>Stage</b><span>#0C0C0C floor · faint gold radial glow behind wordmark (cinematic lighting, sanctioned)</span></li>
+      <li><b>Kicker</b><span>DM Sans 700 · 10px · +2 tracking · uppercase · #E8B44E</span></li>
+      <li><b>Wordmark</b><span>Playfair 700 · 32px · #F2EDE4 — replaces the "F" logo circle</span></li>
+      <li><b>Inputs</b><span>#222222 fill · radius 6 · 12/14 padding · 13.5px · focus = 1px #C4912C outline, no glow</span></li>
+      <li><b>Labels</b><span>10px 600 +1.2 tracking uppercase #52504C</span></li>
+      <li><b>CTA</b><span>#C4912C · radius 6 · 13px padding · DM Sans 700 14px #0C0C0C · press scale 0.97</span></li>
+      <li><b>Error state</b><span>input outline #D4673A + 11px #D4673A line below — shake 300ms, same curve as app wrong-answer</span></li>
+      <li><b>Footnote</b><span>10.5px #52504C centered — states the allowlist plainly</span></li>
+    </ul>
+    <h3 class="conv">Why this is still secure</h3>
+    <ul>
+      <li><b>Allowlist is the gate</b><span>only your two emails pass <code>ADMIN_EMAILS</code> — a random visitor with the URL has no path in</span></li>
+      <li><b>Real credentials each</b><span>Ryan gets his own Supabase auth user — revocable independently, no shared secret in iMessage</span></li>
+      <li><b>The access code added ≈0</b><span>one static secret shared by everyone is weaker than either password it sat in front of</span></li>
+      <li><b>Session hardening</b><span>signed 30-day httpOnly cookie — today's session dies with the 1-hour Supabase token, which is why you keep getting logged out</span></li>
+      <li><b>Rate limit</b><span>5 attempts / 15 min per IP on <code>/api/auth/login</code> — brute force is the only new surface, so cap it</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ==================== DASHBOARD ==================== -->
+<h2>Dashboard — de-chunked <span class="chip">HAIRLINES, NOT BOXES</span></h2>
+<p class="note">Same data, half the ink. The six bordered stat cards collapse into <b>one stat strip</b> (single surface, hairline column dividers — the app's stats pattern). Lists lose their per-row boxes and iOS-blue/green accent circles; rows sit on 0.5px hairlines with the app palette only: gold for accent, flame for warnings, warm gray for everything else. Lesson titles go serif — content reads, chrome labels.</p>
+
+<div class="col" style="margin-bottom:34px;">
+  <div class="tag">Dashboard · joinfides.com/d/dashboard</div>
+  <div class="browser wide">
+    <div class="browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">joinfides.com/d/dashboard</span></div>
+    <div class="shell">
+      <!-- sidebar -->
+      <nav class="snav">
+        <div class="word">Fides<em>.</em></div>
+        <div class="sitem on"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><rect x="1.5" y="1.5" width="4.6" height="4.6" rx="1" stroke="#E8B44E" stroke-width="1.2" fill="none"/><rect x="7.9" y="1.5" width="4.6" height="4.6" rx="1" stroke="#E8B44E" stroke-width="1.2" fill="none"/><rect x="1.5" y="7.9" width="4.6" height="4.6" rx="1" stroke="#E8B44E" stroke-width="1.2" fill="none"/><rect x="7.9" y="7.9" width="4.6" height="4.6" rx="1" stroke="#E8B44E" stroke-width="1.2" fill="none"/></svg>Dashboard</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><path d="M1.5 7h2.5l1.5-3.5L8 10.5 9.5 7h3" stroke="#8A847A" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Health</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 11.5V8M7 11.5V5M11.5 11.5V2.5" stroke="#8A847A" stroke-width="1.3" stroke-linecap="round"/></svg>Reports</div>
+        <div class="ssec">Content</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><path d="M2 2.5h4a1.5 1.5 0 0 1 1.5 1.5v7.5A1.5 1.5 0 0 0 6 10H2V2.5zM12 2.5H8A1.5 1.5 0 0 0 6.5 4v7.5A1.5 1.5 0 0 1 8 10h4V2.5z" stroke="#8A847A" stroke-width="1.1" fill="none" stroke-linejoin="round"/></svg>Lessons</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><rect x="2" y="1.8" width="10" height="10.4" rx="1.2" stroke="#8A847A" stroke-width="1.1" fill="none"/><path d="M4.3 4.5h5.4M4.3 7h5.4M4.3 9.5h3.2" stroke="#8A847A" stroke-width="1.1" stroke-linecap="round"/></svg>Articles</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><path d="M2 3.5h10M2 7h10M2 10.5h6.5" stroke="#8A847A" stroke-width="1.2" stroke-linecap="round"/></svg>Entries</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="8.4" r="3.1" stroke="#8A847A" stroke-width="1.1" fill="none"/><path d="M3.6 3.2a5.4 5.4 0 0 1 6.8 0" stroke="#8A847A" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>Saints</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><circle cx="3.2" cy="3.2" r="1.6" stroke="#8A847A" stroke-width="1.1" fill="none"/><circle cx="10.8" cy="10.8" r="1.6" stroke="#8A847A" stroke-width="1.1" fill="none"/><path d="M4.4 4.4c2.2 2.2 3 3 6.4 3.2M4 10.8h4.2" stroke="#8A847A" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>Tracks</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 12V5.5M7 12V5.5M11.5 12V5.5M1.5 12.5h11M1.8 5l5.2-3 5.2 3z" stroke="#8A847A" stroke-width="1.1" fill="none" stroke-linejoin="round"/></svg>Pillars</div>
+        <div class="ssec">Management</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><path d="M7 1.8v7M4.2 6.2 7 9l2.8-2.8M2.2 11.6h9.6" stroke="#8A847A" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Downloads</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><circle cx="7" cy="4.6" r="2.4" stroke="#8A847A" stroke-width="1.1" fill="none"/><path d="M2.4 12a4.8 4.8 0 0 1 9.2 0" stroke="#8A847A" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>Users</div>
+        <div class="sitem"><svg class="i" width="14" height="14" viewBox="0 0 14 14"><path d="M2 3.4C2 2.6 2.6 2 3.4 2h7.2c.8 0 1.4.6 1.4 1.4v4.8c0 .8-.6 1.4-1.4 1.4H6.5l-2.8 2.6V9.6H3.4C2.6 9.6 2 9 2 8.2V3.4z" stroke="#8A847A" stroke-width="1.1" fill="none" stroke-linejoin="round"/></svg>Feedback</div>
+        <div class="grow"></div>
+        <div class="swho">
+          <div class="avatar">R</div>
+          <div class="em">ryanjburke34@gmail.com</div>
+          <svg class="i" width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 2H2.8A.8.8 0 0 0 2 2.8v6.4c0 .44.36.8.8.8h1.7M8 8.5 10.5 6 8 3.5M10.2 6H5" stroke="#52504C" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </nav>
+
+      <!-- main -->
+      <main class="smain">
+        <div class="shead">
+          <div>
+            <h1>Dashboard</h1>
+            <div class="date">Wednesday, July 8</div>
+          </div>
+          <div class="searchpill">
+            <svg class="i" width="11" height="11" viewBox="0 0 11 11"><circle cx="4.8" cy="4.8" r="3.4" stroke="#52504C" stroke-width="1.3" fill="none"/><path d="m7.4 7.4 2.3 2.3" stroke="#52504C" stroke-width="1.3" stroke-linecap="round"/></svg>
+            Search anything <kbd>⌘K</kbd>
+          </div>
+        </div>
+
+        <div class="statstrip">
+          <div class="stat"><div class="n">1,284</div><div class="l">Total users</div><div class="d">+41 this week</div></div>
+          <div class="stat"><div class="n gold">87</div><div class="l">Pro users</div><div class="d">+6 this week</div></div>
+          <div class="stat"><div class="n">312</div><div class="l">Lessons today</div><div class="d flat">avg 298</div></div>
+          <div class="stat"><div class="n">493</div><div class="l">Active 7d</div><div class="d">+3.9%</div></div>
+          <div class="stat"><div class="n">861</div><div class="l">Active 30d</div><div class="d">+2.1%</div></div>
+          <div class="stat"><div class="n">4.2</div><div class="l">Avg streak</div><div class="d flat">days</div></div>
+        </div>
+
+        <div class="cols">
+          <div>
+            <div class="sect">
+              <div class="sect-head"><span class="sect-title">Recent activity</span><span class="sect-more">View all</span></div>
+              <div class="feed">
+                <div class="frow"><div class="fava gold">MK</div><div class="ftext"><b>Maria K.</b> completed <span class="lk">The Devil's Advocate</span></div><div class="ftime">2m</div></div>
+                <div class="frow"><div class="fava">JT</div><div class="ftext"><b>James T.</b> joined Fides</div><div class="ftime">11m</div></div>
+                <div class="frow"><div class="fava gold">AP</div><div class="ftext"><b>Anna P.</b> completed <span class="lk">Why Seven Sacraments?</span></div><div class="ftime">24m</div></div>
+                <div class="frow"><div class="fava gold">DR</div><div class="ftext"><b>Daniel R.</b> completed <span class="lk">Grace Before Merit</span></div><div class="ftime">1h</div></div>
+                <div class="frow"><div class="fava">LM</div><div class="ftext"><b>Lucia M.</b> joined Fides</div><div class="ftime">2h</div></div>
+                <div class="frow"><div class="fava gold">SB</div><div class="ftext"><b>Sam B.</b> completed <span class="lk">The Canon Question</span></div><div class="ftime">3h</div></div>
+              </div>
+            </div>
+
+            <div class="sect">
+              <div class="sect-head"><span class="sect-title">Content health</span><span class="sect-more">Run checks</span></div>
+              <div class="warn"><span class="wdot"></span><span class="wtype">Lesson</span><span class="wname">Introduction to Lectio Divina</span><span class="wissue">Only 2 steps</span></div>
+              <div class="warn"><span class="wdot"></span><span class="wtype">Saint</span><span class="wname">Bl. Carlo Acutis</span><span class="wissue">Missing bio</span></div>
+              <div class="warn"><span class="wdot"></span><span class="wtype">Article</span><span class="wname">On Fasting Before Communion</span><span class="wissue">Empty body</span></div>
+            </div>
+
+            <div class="sect">
+              <div class="sect-head"><span class="sect-title">Streak distribution</span></div>
+              <div class="bar-row"><span class="bn">1–3 days</span><div class="bar-wrap"><div class="bar" style="width:88%"></div></div><span class="bc">402</span></div>
+              <div class="bar-row"><span class="bn">4–7 days</span><div class="bar-wrap"><div class="bar" style="width:52%"></div></div><span class="bc">238</span></div>
+              <div class="bar-row"><span class="bn">8–30 days</span><div class="bar-wrap"><div class="bar" style="width:31%"></div></div><span class="bc">141</span></div>
+              <div class="bar-row"><span class="bn">30+ days</span><div class="bar-wrap"><div class="bar" style="width:9%"></div></div><span class="bc">40</span></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sect">
+              <div class="sect-head"><span class="sect-title">Content</span></div>
+              <div class="cgrid">
+                <div class="ctile hover"><div class="n">291</div><div class="l">Lessons</div></div>
+                <div class="ctile"><div class="n">42</div><div class="l">Articles</div></div>
+                <div class="ctile"><div class="n">500</div><div class="l">Entries</div></div>
+                <div class="ctile"><div class="n">58</div><div class="l">Saints</div></div>
+                <div class="ctile"><div class="n">36</div><div class="l">Tracks</div></div>
+                <div class="ctile"><div class="n">7</div><div class="l">Pillars</div></div>
+              </div>
+            </div>
+
+            <div class="sect">
+              <div class="sect-head"><span class="sect-title">Most completed lessons</span></div>
+              <div class="rank"><span class="r">1</span><span class="t">What Is Faith, Actually?</span><span class="tr">Starting Points</span><span class="c">212</span></div>
+              <div class="rank"><span class="r">2</span><span class="t">The Devil's Advocate</span><span class="tr">How Saints Are Made</span><span class="c">187</span></div>
+              <div class="rank"><span class="r">3</span><span class="t">Why Seven Sacraments?</span><span class="tr">The Sacraments</span><span class="c">164</span></div>
+              <div class="rank"><span class="r">4</span><span class="t">Grace Before Merit</span><span class="tr">Grace &amp; Freedom</span><span class="c">151</span></div>
+              <div class="rank"><span class="r">5</span><span class="t">The Canon Question</span><span class="tr">Scripture</span><span class="c">139</span></div>
+            </div>
+
+            <div class="sect">
+              <div class="sect-head"><span class="sect-title">Completions by track</span></div>
+              <div class="bar-row"><span class="bn">Starting Points</span><div class="bar-wrap"><div class="bar" style="width:92%"></div></div><span class="bc">631</span></div>
+              <div class="bar-row"><span class="bn">The Sacraments</span><div class="bar-wrap"><div class="bar" style="width:64%"></div></div><span class="bc">438</span></div>
+              <div class="bar-row"><span class="bn">Scripture</span><div class="bar-wrap"><div class="bar" style="width:47%"></div></div><span class="bc">322</span></div>
+              <div class="bar-row"><span class="bn">Saints</span><div class="bar-wrap"><div class="bar" style="width:35%"></div></div><span class="bc">240</span></div>
+              <div class="bar-row"><span class="bn">Prayer</span><div class="bar-wrap"><div class="bar" style="width:22%"></div></div><span class="bc">151</span></div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="spec">
+    <h3>Styling — element by element</h3>
+    <ul>
+      <li><b>Sidebar</b><span>198px · #0C0C0C (no fill) · 0.5px hairline right · 14px stroke icons 1.1–1.2pt</span></li>
+      <li><b>Active nav</b><span>#E8B44E text + icon · 2px #C4912C left bar — no fill block</span></li>
+      <li><b>Section labels</b><span>9px 700 +1.8 tracking uppercase #52504C</span></li>
+      <li><b>Account</b><span>26px initial avatar circle gold-08 · email 10.5px · sign-out icon — hairline above, no boxed footer</span></li>
+      <li><b>Page title</b><span>Playfair 600 · 23px + date 11px #52504C — search pill moves to header</span></li>
+      <li><b>Stat strip</b><span>one #181818 surface · radius 10 · 0.5px #242424 column dividers · number 24px 700 · label 9.5px uppercase · delta 10px #7FB08A</span></li>
+      <li><b>List rows</b><span>no row boxes — 0.5px #1A1A1A hairlines · 9px vertical padding</span></li>
+      <li><b>Activity avatars</b><span>22px initials circle · completion = gold-08/#E8B44E · join = #222222/#8A847A — replaces iOS blue/green icons</span></li>
+      <li><b>Warnings</b><span>5px flame dot · type 9px uppercase · name #F2EDE4 · issue #52504C right</span></li>
+      <li><b>Content tiles</b><span>#181818 · radius 10 · no border · hover → #222222 (depth via value, per app rules)</span></li>
+      <li><b>Lesson titles</b><span>Playfair 400 12.5px — content is serif, chrome is DM Sans (app rule)</span></li>
+      <li><b>Bars</b><span>4px tall · #C4912C on #222222 · radius 2 · tabular-nums counts</span></li>
+      <li><b>Motion</b><span>fade + 8px rise · 180ms ease-out · 30ms stagger · bars fill 250ms ease-out — no springs, nothing over 250ms</span></li>
+    </ul>
+  </div>
+
+  <div class="spec">
+    <h3 class="conv">Why this reads better</h3>
+    <ul>
+      <li><b>One surface, not six</b><span>the stat strip is scanned left-to-right as a sentence; six bordered cards are read as six separate widgets</span></li>
+      <li><b>Borders were the chunk</b><span>every current card carries border + fill + radius; the app never boxes rows — hairlines carry the structure</span></li>
+      <li><b>Palette discipline</b><span>iOS #007AFF / #34C759 / #FFCC00 leave; gold = accent, flame = warning, green only for deltas — same grammar as the app</span></li>
+      <li><b>Serif where it matters</b><span>lesson and saint names in Playfair make the content pop out of the chrome, like the app's cards</span></li>
+      <li><b>Deltas add meaning</b><span>"+6 this week" under Pro users answers the question you actually open the dashboard to ask</span></li>
+    </ul>
+    <h3>To ship this</h3>
+    <ul>
+      <li><b>1 · Supabase</b><span>create auth user for <code>ryanjburke34@gmail.com</code> (invite email, he sets his own password)</span></li>
+      <li><b>2 · Vercel env</b><span><code>ADMIN_EMAILS=sbastiancastro08@gmail.com,ryanjburke34@gmail.com</code> → redeploy</span></li>
+      <li><b>3 · Auth API</b><span>drop <code>/api/auth/gate</code> · sign session cookie (httpOnly, Secure, SameSite=Lax, 30d) · rate-limit login</span></li>
+      <li><b>4 · Views</b><span>restyle Login, Layout, Dashboard per this spec — data fetching unchanged</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ==================== WEEKLY REPORT ==================== -->
+<h2>Weekly report — every Monday, both inboxes <span class="chip">NEW · CRON + REPORTS TAB</span></h2>
+<p class="note">Every Monday at 9:00 ET a Vercel cron computes the week's numbers, saves a snapshot, and emails it to both of you. The same report lives under <b>Reports</b> in the sidebar — with history — so nobody digs through screens to answer "how did the week go?". Trials and paying subs come from a new <code>subscription_events</code> table the Superwall webhook now writes on every store event; downloads come from <code>download_clicks</code>; users from <code>users</code>.</p>
+
+<div class="row">
+  <div class="col">
+    <div class="tag">Reports · joinfides.com/d/reports</div>
+    <div class="browser" style="width:640px;">
+      <div class="browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">joinfides.com/d/reports</span></div>
+      <div style="background:var(--bg-base);padding:28px 32px 32px;">
+        <div class="shead" style="margin-bottom:18px;">
+          <div>
+            <h1 style="font-family:var(--serif);font-size:23px;font-weight:600;">Weekly Report</h1>
+            <div class="date">Week of Jul 6 – Jul 12 · sent Mon 9:00 ET to both admins</div>
+          </div>
+          <div class="searchpill" style="color:var(--gold-text);background:var(--gold-08);">Run now</div>
+        </div>
+
+        <div style="background:var(--bg-surface);border-radius:10px;padding:4px 20px;">
+          <div style="display:flex;align-items:baseline;gap:12px;padding:13px 0;border-bottom:0.5px solid #242424;">
+            <span style="flex:1;font-size:12.5px;color:var(--text-2);">Downloads</span>
+            <span style="font-size:16px;font-weight:700;">142</span>
+            <span style="width:92px;text-align:right;font-size:11px;color:var(--ok);">+38 this week</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:12px;padding:13px 0;border-bottom:0.5px solid #242424;">
+            <span style="flex:1;font-size:12.5px;color:var(--text-2);">Users</span>
+            <span style="font-size:16px;font-weight:700;">1,284</span>
+            <span style="width:92px;text-align:right;font-size:11px;color:var(--ok);">+41 this week</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:12px;padding:13px 0;border-bottom:0.5px solid #242424;">
+            <span style="flex:1;font-size:12.5px;color:var(--text-2);">Free-trial signups</span>
+            <span style="font-size:16px;font-weight:700;">64</span>
+            <span style="width:92px;text-align:right;font-size:11px;color:var(--ok);">+9 this week</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:12px;padding:13px 0;border-bottom:0.5px solid #242424;">
+            <span style="flex:1;font-size:12.5px;color:var(--text-2);">Paying — monthly</span>
+            <span style="font-size:16px;font-weight:700;color:var(--gold-text);">23</span>
+            <span style="width:92px;text-align:right;font-size:11px;color:var(--text-3);">of 87 Pro</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:12px;padding:13px 0;border-bottom:0.5px solid #242424;">
+            <span style="flex:1;font-size:12.5px;color:var(--text-2);">Paying — yearly</span>
+            <span style="font-size:16px;font-weight:700;color:var(--gold-text);">41</span>
+            <span style="width:92px;text-align:right;font-size:11px;color:var(--text-3);">of 87 Pro</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:12px;padding:13px 0;">
+            <span style="flex:1;font-size:12.5px;color:var(--text-2);">New paying</span>
+            <span style="font-size:16px;font-weight:700;">6</span>
+            <span style="width:92px;text-align:right;font-size:11px;color:var(--ok);">this week</span>
+          </div>
+        </div>
+
+        <div class="sect-head" style="margin:22px 0 6px;"><span class="sect-title">Past reports</span></div>
+        <div class="rank"><span class="t" style="font-family:var(--sans);font-size:12px;color:var(--text-2);">Week of Jun 29 – Jul 5</span><span class="tr">+29 downloads · +2 paying</span></div>
+        <div class="rank"><span class="t" style="font-family:var(--sans);font-size:12px;color:var(--text-2);">Week of Jun 22 – Jun 28</span><span class="tr">+34 downloads · +4 paying</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="spec">
+    <h3>The six numbers, defined</h3>
+    <ul>
+      <li><b>Downloads</b><span>total rows in <code>download_clicks</code> + new this week</span></li>
+      <li><b>Users</b><span>total non-bot accounts + created in last 7 days</span></li>
+      <li><b>Trial signups</b><span><code>initial_purchase</code> events with period type TRIAL — total + this week</span></li>
+      <li><b>Paying monthly</b><span>current Pro users whose latest paid event is the monthly product</span></li>
+      <li><b>Paying yearly</b><span>same, yearly product</span></li>
+      <li><b>New paying</b><span>users whose first non-trial charge landed in the last 7 days</span></li>
+    </ul>
+    <h3>Plumbing</h3>
+    <ul>
+      <li><b>Event log</b><span>new <code>subscription_events</code> table — webhook inserts every Superwall event (product, period type, timestamp, raw payload)</span></li>
+      <li><b>Metrics fn</b><span><code>admin_report_metrics()</code> Postgres function, service-role only</span></li>
+      <li><b>Cron</b><span>Vercel cron → <code>/api/reports/weekly</code> Mondays 13:00 UTC · guarded by <code>CRON_SECRET</code></span></li>
+      <li><b>Email</b><span>Resend → both admin addresses · plain dark HTML matching this card</span></li>
+      <li><b>Snapshot</b><span>every run stored in <code>admin_weekly_reports</code> — the Reports tab reads history from it</span></li>
+      <li><b>Run now</b><span>same endpoint, admin session instead of cron secret</span></li>
+    </ul>
+    <h3>Limits worth knowing</h3>
+    <ul>
+      <li><b>History starts now</b><span>events log from deploy day forward — Superwall can't backfill</span></li>
+      <li><b>Trial ≠ paying</b><span>a trial converts to "paying" at first real charge (the day-7 renewal), matching how the money actually moves</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ==================== SECURITY MODEL ==================== -->
+<h2>Access &amp; security — current vs. redesigned</h2>
+<table>
+  <tr><th>Layer</th><th>Today</th><th>Redesigned</th></tr>
+  <tr><td>Who can sign in</td><td>One allowlisted email</td><td class="good">Two allowlisted emails — you + Ryan, each with own password, either revocable alone</td></tr>
+  <tr><td>Steps to get in</td><td class="bad">Access code → email → password (3 secrets, 2 screens)</td><td class="good">Email + password (1 screen)</td></tr>
+  <tr><td>Access code gate</td><td class="bad">Static shared secret in an env var — adds friction, not security</td><td class="good">Removed — allowlist + credentials already gate</td></tr>
+  <tr><td>Session length</td><td class="bad">Cookie says 24h but rides a 1-hour Supabase token — you get silently logged out mid-session</td><td class="good">Signed (HMAC) 30-day session, verified server-side on every request</td></tr>
+  <tr><td>Sign out</td><td class="bad">Logout sets the cookie on <code>Path=/api</code> but login set <code>Path=/</code> — it never actually clears</td><td class="good">Fixed — logout clears the real cookie</td></tr>
+  <tr><td>Brute force</td><td>5 attempts / 15 min per IP (already in place)</td><td>Unchanged</td></tr>
+  <tr><td>Service-role key</td><td>Server-only via <code>/api/admin/rpc</code></td><td>Unchanged — never shipped to the browser</td></tr>
+</table>
+
+</body>
+</html>

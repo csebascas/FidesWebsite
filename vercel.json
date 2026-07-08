@@ -1,4 +1,7 @@
 {
+  "crons": [
+    { "path": "/api/reports/weekly", "schedule": "0 13 * * 1" }
+  ],
   "rewrites": [
     { "source": "/((?!api/|\\.well-known/).*)", "destination": "/index.html" }
   ],

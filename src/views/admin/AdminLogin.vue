@@ -1,58 +1,26 @@
 <template>
   <div class="login-page">
-    <div class="login-card">
-      <div class="logo-wrap">
-        <div class="logo-circle">
-          <span class="logo-letter">F</span>
-        </div>
+    <div class="login-glow"></div>
+    <form class="login-box" :class="{ shake: shaking }" @submit.prevent="handleLogin">
+      <h1 class="wordmark">Fides</h1>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" v-model="email" type="email" autocomplete="email" spellcheck="false" />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input id="password" v-model="password" type="password" autocomplete="current-password" />
       </div>
 
-      <!-- Gate: access code -->
-      <form v-if="!gateUnlocked" @submit.prevent="checkGate" class="login-form">
-        <div class="field">
-          <label for="access-code">Access Code</label>
-          <input
-            id="access-code"
-            v-model="accessCode"
-            type="password"
-            placeholder="Enter access code"
-            autocomplete="off"
-          />
-        </div>
-        <p v-if="gateError" class="error">Invalid access code</p>
-        <button type="submit" class="btn-gold">Continue</button>
-      </form>
+      <p v-if="error" class="error">{{ error }}</p>
 
-      <!-- Login form (only after gate) -->
-      <form v-else @submit.prevent="handleLogin" class="login-form">
-        <div class="field">
-          <label for="email">Email</label>
-          <input
-            id="email"
-            v-model="email"
-            type="email"
-            placeholder="admin@joinfides.com"
-            autocomplete="email"
-          />
-        </div>
-        <div class="field">
-          <label for="password">Password</label>
-          <input
-            id="password"
-            v-model="password"
-            type="password"
-            placeholder="Password"
-            autocomplete="current-password"
-          />
-        </div>
+      <button type="submit" class="btn-gold" :disabled="loading">
+        {{ loading ? 'Signing in…' : 'Sign in' }}
+      </button>
 
-        <p v-if="error" class="error">{{ error }}</p>
-
-        <button type="submit" class="btn-gold" :disabled="loading">
-          {{ loading ? 'Signing in...' : 'Sign in' }}
-        </button>
-      </form>
-    </div>
+      <p class="foot">Access limited to authorized admins.<br>Stays signed in for 30 days on this device.</p>
+    </form>
   </div>
 </template>
 
@@ -61,51 +29,31 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const accessCode = ref('')
-const gateUnlocked = ref(false)
-const gateError = ref(false)
 const email = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
-
-async function checkGate() {
-  gateError.value = false
-  try {
-    const res = await fetch('/api/auth/gate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code: accessCode.value }),
-    })
-    if (res.ok) {
-      gateUnlocked.value = true
-    } else {
-      gateError.value = true
-    }
-  } catch {
-    gateError.value = true
-  }
-}
+const shaking = ref(false)
 
 async function handleLogin() {
   error.value = ''
   loading.value = true
-
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.value, password: password.value }),
+      body: JSON.stringify({ email: email.value.trim(), password: password.value }),
     })
-
     if (res.ok) {
       router.push('/d/dashboard')
-    } else {
-      const data = await res.json().catch(() => ({}))
-      error.value = data.error || 'Invalid credentials'
+      return
     }
+    const data = await res.json().catch(() => ({}))
+    error.value = data.error || 'Invalid credentials'
+    shaking.value = true
+    setTimeout(() => (shaking.value = false), 320)
   } catch {
-    error.value = 'Network error. Please try again.'
+    error.value = 'Network error — try again'
   } finally {
     loading.value = false
   }
@@ -119,110 +67,113 @@ async function handleLogin() {
   align-items: center;
   justify-content: center;
   background: var(--bg);
-  padding: 20px;
+  position: relative;
+  overflow: hidden;
 }
 
-.login-card {
-  width: 100%;
-  max-width: 380px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 40px 32px;
+.login-glow {
+  position: absolute;
+  top: 12vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 420px;
+  height: 300px;
+  background: radial-gradient(closest-side, rgba(196, 145, 44, 0.10), transparent);
+  pointer-events: none;
 }
 
-.logo-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 32px;
+.login-box {
+  width: 320px;
+  position: relative;
+  animation: rise 0.2s ease-out;
 }
 
-.logo-circle {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 2px solid var(--gold);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
 }
 
-.logo-letter {
+.login-box.shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+.wordmark {
   font-family: var(--serif);
-  font-size: 28px;
-  color: var(--gold);
+  font-size: 32px;
   font-weight: 700;
-}
-
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  color: var(--text);
+  text-align: center;
+  margin: 0 0 26px;
 }
 
 .field label {
+  display: block;
   font-family: var(--sans);
-  font-size: 12px;
-  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--text-3);
+  margin-bottom: 6px;
 }
 
 .field input {
-  font-family: var(--sans);
-  font-size: 14px;
-  padding: 12px 16px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
+  width: 100%;
   background: var(--raised);
-  color: var(--text);
+  border: none;
   outline: none;
-  transition: border-color 0.2s;
-}
-
-.field input::placeholder {
-  color: var(--text-3);
+  border-radius: 6px;
+  padding: 12px 14px;
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--text);
+  margin-bottom: 14px;
+  transition: box-shadow 0.15s ease;
 }
 
 .field input:focus {
-  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold);
 }
 
 .error {
   font-family: var(--sans);
-  font-size: 13px;
+  font-size: 11px;
   color: var(--streak);
-  margin: 0;
+  margin: -4px 0 10px;
 }
 
 .btn-gold {
+  width: 100%;
+  background: var(--gold);
+  color: #0c0c0c;
+  border: none;
+  border-radius: 6px;
+  padding: 13px;
   font-family: var(--sans);
   font-size: 14px;
-  font-weight: 600;
-  padding: 12px 16px;
-  border-radius: 6px;
-  border: none;
-  background: var(--gold);
-  color: var(--bg);
+  font-weight: 700;
   cursor: pointer;
-  transition: opacity 0.2s;
-  margin-top: 8px;
+  margin-top: 4px;
+  transition: transform 0.12s ease, opacity 0.15s ease;
 }
 
-.btn-gold:hover {
-  opacity: 0.9;
-}
+.btn-gold:active { transform: scale(0.97); }
+.btn-gold:disabled { opacity: 0.6; cursor: default; }
 
-.btn-gold:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.foot {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  color: var(--text-3);
+  text-align: center;
+  margin-top: 14px;
+  line-height: 1.6;
 }
 </style>
