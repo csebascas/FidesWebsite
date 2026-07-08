@@ -13,6 +13,11 @@
 
     <div v-if="latest" class="card rise" style="--i: 1">
       <div class="mrow">
+        <span class="ml">Money made</span>
+        <span class="mn gold">{{ money(latest.metrics.revenue_total) }}</span>
+        <span class="md up">+{{ money(latest.metrics.revenue_week) }} this week</span>
+      </div>
+      <div class="mrow">
         <span class="ml">Downloads</span>
         <span class="mn">{{ latest.metrics.downloads_total }}</span>
         <span class="md up">+{{ latest.metrics.downloads_week }} this week</span>
@@ -26,6 +31,16 @@
         <span class="ml">Free-trial signups</span>
         <span class="mn">{{ latest.metrics.trials_total }}</span>
         <span class="md up">+{{ latest.metrics.trials_week }} this week</span>
+      </div>
+      <div class="mrow">
+        <span class="ml">Active trials</span>
+        <span class="mn">{{ latest.metrics.active_trials ?? 0 }}</span>
+        <span class="md">right now</span>
+      </div>
+      <div class="mrow">
+        <span class="ml">Trial conversions</span>
+        <span class="mn">{{ latest.metrics.trial_conversions ?? 0 }}</span>
+        <span class="md">all time</span>
       </div>
       <div class="mrow">
         <span class="ml">Paying — monthly</span>
@@ -119,6 +134,7 @@ interface TrendTile {
 
 const trendTiles = computed<TrendTile[]>(() => {
   const defs: { label: string; gold?: boolean; value: (m: Record<string, number>) => number }[] = [
+    { label: 'Revenue / wk', gold: true, value: (m) => m.revenue_week ?? 0 },
     { label: 'Downloads / wk', value: (m) => m.downloads_week ?? 0 },
     { label: 'New users / wk', value: (m) => m.users_week ?? 0 },
     { label: 'Trial signups / wk', value: (m) => m.trials_week ?? 0 },
@@ -140,6 +156,10 @@ const trendTiles = computed<TrendTile[]>(() => {
 
 function fmtDay(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function money(n: number | undefined | null): string {
+  return `$${(n ?? 0).toFixed(2)}`
 }
 
 function fmtRange(start: string, end: string): string {

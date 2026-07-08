@@ -7,19 +7,23 @@
 
     <!-- Stat strip -->
     <div class="statstrip rise" style="--i: 1">
-      <template v-if="loadingStats">
+      <template v-if="loading">
         <div v-for="i in 6" :key="i" class="stat">
           <div class="skeleton-number"></div>
           <div class="skeleton-label"></div>
         </div>
       </template>
       <template v-else>
-        <div class="stat"><span class="n">{{ stats.totalUsers ?? '—' }}</span><span class="l">Total users</span></div>
-        <div class="stat"><span class="n gold">{{ stats.proUsers ?? '—' }}</span><span class="l">Pro users</span></div>
-        <div class="stat"><span class="n">{{ stats.activeToday ?? '—' }}</span><span class="l">Lessons today</span></div>
-        <div class="stat"><span class="n">{{ stats.active7d ?? '—' }}</span><span class="l">Active 7d</span></div>
-        <div class="stat"><span class="n">{{ stats.active30d ?? '—' }}</span><span class="l">Active 30d</span></div>
-        <div class="stat"><span class="n">{{ stats.avgStreak ?? '—' }}</span><span class="l">Avg streak</span></div>
+        <div class="stat">
+          <span class="n">{{ stats.total_users ?? '—' }}</span>
+          <span class="l">Total users</span>
+          <span class="d" v-if="stats.users_week">+{{ stats.users_week }} this week</span>
+        </div>
+        <div class="stat"><span class="n gold">{{ stats.pro_users ?? '—' }}</span><span class="l">Pro users</span></div>
+        <div class="stat"><span class="n">{{ stats.lessons_today ?? '—' }}</span><span class="l">Lessons today</span></div>
+        <div class="stat"><span class="n">{{ stats.active_7d ?? '—' }}</span><span class="l">Active 7d</span></div>
+        <div class="stat"><span class="n">{{ stats.active_30d ?? '—' }}</span><span class="l">Active 30d</span></div>
+        <div class="stat"><span class="n">{{ stats.avg_streak ?? '—' }}</span><span class="l">Avg streak</span></div>
       </template>
     </div>
 
@@ -28,39 +32,39 @@
       <div class="dash-col">
         <div class="section rise" style="--i: 2">
           <h2 class="section-title">Recent Activity</h2>
-          <div v-if="activity.length === 0 && !loadingActivity" class="empty-text">No recent activity</div>
+          <div v-if="activity.length === 0 && !loading" class="empty-text">No recent activity</div>
           <div class="feed">
-            <div v-for="a in activity" :key="a.id" class="frow">
+            <div v-for="(a, i) in activity" :key="i" class="frow">
               <span class="fava" :class="{ gold: a.action === 'completed' }">{{ initials(a.name) }}</span>
               <span class="ftext">
                 <strong>{{ a.name }}</strong> {{ a.action === 'joined' ? 'joined' : 'completed' }}
-                <router-link v-if="a.route" :to="a.route" class="flink">{{ a.detail }}</router-link>
+                <router-link v-if="a.lesson_id" :to="`/d/content/lessons/${a.lesson_id}`" class="flink">{{ a.detail }}</router-link>
                 <template v-else>{{ a.detail || '' }}</template>
               </span>
-              <span class="ftime">{{ a.ago }}</span>
+              <span class="ftime">{{ timeAgo(a.ts) }}</span>
             </div>
           </div>
         </div>
 
         <div class="section rise" style="--i: 3">
           <h2 class="section-title">Content Health</h2>
-          <div v-if="!loadingHealth && warnings.length === 0" class="health-ok">
+          <div v-if="!loading && warnings.length === 0" class="health-ok">
             <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2.5 6.5 5 9l4.5-5.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
             All content looks healthy
           </div>
           <div v-for="w in warnings" :key="w.id" class="warn">
             <span class="wdot"></span>
             <span class="wtype">{{ w.type }}</span>
-            <router-link :to="w.route" class="wname">{{ w.name }}</router-link>
+            <router-link :to="`/d/content/${w.kind}/${w.id}`" class="wname">{{ w.name }}</router-link>
             <span class="wissue">{{ w.issue }}</span>
           </div>
         </div>
 
-        <div v-if="streakDist.length" class="section rise" style="--i: 4">
+        <div v-if="streaks.length" class="section rise" style="--i: 4">
           <h2 class="section-title">Streak Distribution</h2>
-          <div v-for="s in streakDist" :key="s.label" class="bar-row">
+          <div v-for="s in streaks" :key="s.label" class="bar-row">
             <span class="bn">{{ s.label }}</span>
-            <div class="bar-wrap"><div class="bar" :style="{ width: s.pct + '%' }"></div></div>
+            <div class="bar-wrap"><div class="bar" :style="{ width: pct(s.count, maxStreak) + '%' }"></div></div>
             <span class="bc">{{ s.count }}</span>
           </div>
         </div>
@@ -71,7 +75,7 @@
         <div class="section rise" style="--i: 2">
           <h2 class="section-title">Content</h2>
           <div class="cgrid">
-            <router-link v-for="c in contentCounts" :key="c.label" :to="c.route" class="ctile">
+            <router-link v-for="c in contentTiles" :key="c.label" :to="c.route" class="ctile">
               <span class="cn">{{ c.count ?? '—' }}</span>
               <span class="cl">{{ c.label }}</span>
             </router-link>
@@ -92,7 +96,7 @@
           <h2 class="section-title">Completions by Track</h2>
           <div v-for="t in trackStats" :key="t.name" class="bar-row">
             <span class="bn">{{ t.name }}</span>
-            <div class="bar-wrap"><div class="bar" :style="{ width: t.pct + '%' }"></div></div>
+            <div class="bar-wrap"><div class="bar" :style="{ width: pct(t.completions, maxTrack) + '%' }"></div></div>
             <span class="bc">{{ t.completions }}</span>
           </div>
         </div>
@@ -102,22 +106,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { supabase, adminRpc } from '../../lib/supabase'
+import { ref, computed, onMounted } from 'vue'
 
-const loadingStats = ref(true)
-const loadingActivity = ref(true)
-const loadingHealth = ref(true)
-
+const loading = ref(true)
 const stats = ref<any>({})
-const contentCounts = ref<any[]>([])
+const contentCounts = ref<any>({})
 const topLessons = ref<any[]>([])
 const trackStats = ref<any[]>([])
-const streakDist = ref<any[]>([])
+const streaks = ref<any[]>([])
 const activity = ref<any[]>([])
 const warnings = ref<any[]>([])
 
 const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+
+const contentTiles = computed(() => [
+  { label: 'Lessons', count: contentCounts.value.lessons, route: '/d/content/lessons' },
+  { label: 'Articles', count: contentCounts.value.articles, route: '/d/content/articles' },
+  { label: 'Entries', count: contentCounts.value.entries, route: '/d/content/entries' },
+  { label: 'Saints', count: contentCounts.value.saints, route: '/d/content/saints' },
+  { label: 'Tracks', count: contentCounts.value.tracks, route: '/d/content/tracks' },
+  { label: 'Pillars', count: contentCounts.value.pillars, route: '/d/content/pillars' },
+])
+
+const maxStreak = computed(() => Math.max(...streaks.value.map((s: any) => s.count), 1))
+const maxTrack = computed(() => Math.max(...trackStats.value.map((t: any) => t.completions), 1))
+
+function pct(value: number, max: number) {
+  return max ? Math.round((value / max) * 100) : 0
+}
 
 function initials(name: string): string {
   const parts = (name || '').trim().split(/\s+/)
@@ -139,132 +155,20 @@ function timeAgo(dateStr: string): string {
 }
 
 onMounted(async () => {
-  // 1. Stats from API
   try {
-    const res = await fetch('/api/stats')
+    const res = await fetch('/api/dashboard')
     if (res.ok) {
-      const data = await res.json()
-      stats.value = {
-        totalUsers: data.total_users,
-        proUsers: data.pro_users,
-        activeToday: data.lessons_completed_today,
-        active7d: data.users_last_7_days,
-        active30d: data.users_last_30_days,
-        avgStreak: data.average_streak,
-      }
-      // Streak distribution
-      if (data.streak_distribution) {
-        const maxS = Math.max(...Object.values(data.streak_distribution as Record<string, number>), 1)
-        streakDist.value = Object.entries(data.streak_distribution).map(([label, count]) => ({
-          label, count, pct: Math.round(((count as number) / maxS) * 100)
-        }))
-      }
+      const d = await res.json()
+      stats.value = d.stats || {}
+      contentCounts.value = d.content_counts || {}
+      activity.value = d.activity || []
+      topLessons.value = d.top_lessons || []
+      trackStats.value = d.track_stats || []
+      streaks.value = d.streaks || []
+      warnings.value = d.warnings || []
     }
   } catch { /* keep defaults */ }
-  loadingStats.value = false
-
-  // 2. Content counts
-  const tables = [
-    { label: 'Lessons', table: 'lessons', route: '/d/content/lessons' },
-    { label: 'Articles', table: 'articles', route: '/d/content/articles' },
-    { label: 'Entries', table: 'reference_entries', route: '/d/content/entries' },
-    { label: 'Saints', table: 'saints', route: '/d/content/saints' },
-    { label: 'Tracks', table: 'tracks', route: '/d/content/tracks' },
-    { label: 'Pillars', table: 'pillars', route: '/d/content/pillars' },
-  ]
-  const counts = await Promise.all(
-    tables.map(async (t) => {
-      const { count } = await supabase.from(t.table).select('*', { count: 'exact', head: true })
-      return { label: t.label, count, route: t.route }
-    })
-  )
-  contentCounts.value = counts
-
-  // 3. Recent activity feed (users table needs service role)
-  const [signups, completions] = await Promise.all([
-    adminRpc({ action: 'select', table: 'users', select: 'id, display_name, created_at', order: { column: 'created_at', ascending: false }, limit: 6 }),
-    adminRpc({ action: 'select', table: 'user_lesson_progress', select: 'id, user_id, lesson_id, completed_at', match: { completed: true }, order: { column: 'completed_at', ascending: false }, limit: 10 }),
-  ])
-
-  const feed: any[] = []
-
-  for (const u of (signups.data ?? [])) {
-    feed.push({ id: `signup-${u.id}`, name: u.display_name || 'Anonymous', action: 'joined', detail: '', route: '', ago: timeAgo(u.created_at), ts: new Date(u.created_at).getTime() })
-  }
-
-  if (completions.data && completions.data.length > 0) {
-    const lessonIds = [...new Set(completions.data.map((c: any) => c.lesson_id))]
-    const userIds = [...new Set(completions.data.map((c: any) => c.user_id))]
-    const [lessonRes, userRes] = await Promise.all([
-      supabase.from('lessons').select('id, title').in('id', lessonIds),
-      adminRpc({ action: 'select', table: 'users', select: 'id, display_name' }),
-    ])
-    const lessonMap = Object.fromEntries((lessonRes.data ?? []).map((l: any) => [l.id, l.title]))
-    const allUsers = (userRes.data ?? []).filter((u: any) => userIds.includes(u.id))
-    const userMap = Object.fromEntries(allUsers.map((u: any) => [u.id, u.display_name || 'Anonymous']))
-
-    for (const c of completions.data) {
-      feed.push({
-        id: `comp-${c.id}`, name: userMap[c.user_id] || 'Anonymous', action: 'completed',
-        detail: lessonMap[c.lesson_id] || 'a lesson', route: `/d/content/lessons/${c.lesson_id}`,
-        ago: timeAgo(c.completed_at), ts: new Date(c.completed_at).getTime(),
-      })
-    }
-  }
-
-  feed.sort((a, b) => b.ts - a.ts)
-  activity.value = feed.slice(0, 12)
-  loadingActivity.value = false
-
-  // 4. Top lessons and track stats
-  const { data: progress } = await supabase.from('user_lesson_progress').select('lesson_id').eq('completed', true)
-  if (progress && progress.length > 0) {
-    const countMap: Record<string, number> = {}
-    for (const p of progress) countMap[p.lesson_id] = (countMap[p.lesson_id] || 0) + 1
-
-    const lessonIds = Object.keys(countMap)
-    const { data: lessons } = await supabase.from('lessons').select('id, title, track_id').in('id', lessonIds)
-    const trackIds = [...new Set((lessons ?? []).map((l: any) => l.track_id).filter(Boolean))]
-    const { data: tracks } = await supabase.from('tracks').select('id, name').in('id', trackIds)
-    const trackMap = Object.fromEntries((tracks ?? []).map((t: any) => [t.id, t.name]))
-
-    topLessons.value = (lessons ?? [])
-      .map((l: any) => ({ lesson_id: l.id, title: l.title, track_name: trackMap[l.track_id] || '', completions: countMap[l.id] || 0 }))
-      .sort((a: any, b: any) => b.completions - a.completions)
-      .slice(0, 10)
-
-    const trackCounts: Record<string, number> = {}
-    for (const l of lessons ?? []) {
-      const tn = trackMap[l.track_id] || 'Unknown'
-      trackCounts[tn] = (trackCounts[tn] || 0) + (countMap[l.id] || 0)
-    }
-    const maxTrack = Math.max(...Object.values(trackCounts), 1)
-    trackStats.value = Object.entries(trackCounts)
-      .map(([name, completions]) => ({ name, completions, pct: Math.round((completions / maxTrack) * 100) }))
-      .sort((a, b) => b.completions - a.completions)
-  }
-
-  // 5. Content health warnings
-  const [lessonsCheck, articlesCheck, saintsCheck] = await Promise.all([
-    supabase.from('lessons').select('id, title, content').eq('active', true),
-    supabase.from('articles').select('id, title, body').eq('published', true),
-    supabase.from('saints').select('id, name, short_bio'),
-  ])
-
-  const w: any[] = []
-  for (const l of (lessonsCheck.data ?? [])) {
-    const steps = Array.isArray(l.content) ? l.content : []
-    if (steps.length < 3) w.push({ id: `l-${l.id}`, type: 'Lesson', name: l.title, route: `/d/content/lessons/${l.id}`, issue: `Only ${steps.length} steps` })
-  }
-  for (const a of (articlesCheck.data ?? [])) {
-    const blocks = Array.isArray(a.body) ? a.body : []
-    if (blocks.length === 0) w.push({ id: `a-${a.id}`, type: 'Article', name: a.title, route: `/d/content/articles/${a.id}`, issue: 'Empty body' })
-  }
-  for (const s of (saintsCheck.data ?? [])) {
-    if (!s.short_bio) w.push({ id: `s-${s.id}`, type: 'Saint', name: s.name, route: `/d/content/saints/${s.id}`, issue: 'Missing bio' })
-  }
-  warnings.value = w.slice(0, 10)
-  loadingHealth.value = false
+  loading.value = false
 })
 </script>
 
@@ -307,6 +211,7 @@ onMounted(async () => {
 .stat .n { font-family: var(--sans); font-size: 24px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
 .stat .n.gold { color: var(--gold-light); }
 .stat .l { font-family: var(--sans); font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-3); }
+.stat .d { font-family: var(--sans); font-size: 10px; color: #7FB08A; }
 
 .skeleton-number { width: 44px; height: 24px; background: var(--raised); border-radius: 4px; animation: pulse 1.5s ease-in-out infinite; }
 .skeleton-label { width: 62px; height: 9px; background: var(--raised); border-radius: 3px; animation: pulse 1.5s ease-in-out infinite; animation-delay: 0.1s; }

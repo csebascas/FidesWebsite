@@ -35,6 +35,7 @@ Project **fides-website** → Settings → Environment Variables (Production):
 | `ADMIN_SESSION_SECRET` | any long random string (`openssl rand -hex 32`) | optional — falls back to the service-role key if unset |
 | `CRON_SECRET` | another random string | Vercel automatically sends it as a bearer token on cron calls; without it the Monday cron gets 401 |
 | `RESEND_API_KEY` | from resend.com | optional — without it the report still runs + saves, it just doesn't email |
+| `SUPERWALL_API_KEY` | org API key from Superwall → app settings → API Keys (data:read scope is enough) | powers money made / trials / paying in the report with full store history; without it those numbers fall back to our own event log (which only starts 2026-07-08) |
 | `REPORT_FROM` | `Fides Reports <reports@joinfides.com>` | optional — requires verifying joinfides.com in Resend first; defaults to Resend's onboarding sender |
 | `ADMIN_ACCESS_CODE` | — | **delete it** — the access-code gate is gone |
 

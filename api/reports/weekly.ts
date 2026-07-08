@@ -1,9 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAdminClient } from '../_lib/supabase.js';
 import { readSession, allowedEmails } from '../_lib/auth.js';
+import { fetchSuperwallMetrics } from '../_lib/superwall.js';
 
-// Runs the weekly report: computes metrics via admin_report_metrics(), stores
-// a snapshot in admin_weekly_reports, and emails both admins via Resend.
+// Runs the weekly report: computes metrics (Supabase + Superwall), stores a
+// snapshot in admin_weekly_reports, and emails both admins via Resend.
+//
+// Money/trials/paying come from Superwall's revenue attribution (full store
+// history); downloads/users come from our own tables. If SUPERWALL_API_KEY is
+// missing the trial/paying numbers fall back to our subscription_events log,
+// which only has history from 2026-07-08 onward.
 //
 // Callers:
 //  - Vercel cron (Mondays 13:00 UTC) — authenticated by CRON_SECRET bearer
@@ -21,10 +27,19 @@ interface Metrics {
   paying_yearly: number;
   paying_new_week: number;
   pro_total: number;
+  revenue_total?: number;
+  revenue_week?: number;
+  active_trials?: number;
+  trial_conversions?: number;
+  source?: string;
 }
 
 function fmtDate(d: Date): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function money(n: number | undefined): string {
+  return `$${(n ?? 0).toFixed(2)}`;
 }
 
 function reportHtml(m: Metrics, weekStart: Date, weekEnd: Date): string {
@@ -42,9 +57,11 @@ function reportHtml(m: Metrics, weekStart: Date, weekEnd: Date): string {
       <div style="font:400 12px 'Helvetica Neue',Arial,sans-serif;color:#52504C;margin:6px 0 20px;">Week of ${fmtDate(weekStart)} – ${fmtDate(weekEnd)}</div>
       <div style="background:#181818;border-radius:10px;padding:6px 20px;">
         <table style="width:100%;border-collapse:collapse;">
+          ${row('Money made', money(m.revenue_total), `+${money(m.revenue_week)} this week`, true)}
           ${row('Downloads', m.downloads_total, `+${m.downloads_week} this week`)}
           ${row('Users', m.users_total, `+${m.users_week} this week`)}
           ${row('Free-trial signups', m.trials_total, `+${m.trials_week} this week`)}
+          ${row('Active trials', m.active_trials ?? 0, 'right now')}
           ${row('Paying — monthly', m.paying_monthly, `of ${m.pro_total} Pro`, true)}
           ${row('Paying — yearly', m.paying_yearly, `of ${m.pro_total} Pro`, true)}
           ${row('New paying', m.paying_new_week, 'this week')}
@@ -65,11 +82,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const supabase = getAdminClient();
-  const { data: metrics, error } = await supabase.rpc('admin_report_metrics');
+  const [{ data: metrics, error }, superwall] = await Promise.all([
+    supabase.rpc('admin_report_metrics'),
+    fetchSuperwallMetrics(),
+  ]);
   if (error || !metrics) {
     return res.status(500).json({ error: error?.message || 'metrics failed' });
   }
   const m = metrics as Metrics;
+
+  // Superwall (store history) overrides webhook-derived trial/paying numbers
+  // and contributes revenue; new-paying-this-week comes from trial conversions
+  // plus direct purchases when Superwall is available.
+  if (superwall) {
+    m.trials_total = superwall.trials_total;
+    m.trials_week = superwall.trials_week;
+    m.paying_monthly = superwall.paying_monthly;
+    m.paying_yearly = superwall.paying_yearly;
+    m.revenue_total = superwall.revenue_total;
+    m.revenue_week = superwall.revenue_week;
+    m.active_trials = superwall.active_trials;
+    m.trial_conversions = superwall.trial_conversions;
+    m.source = 'superwall';
+  } else {
+    m.source = 'supabase';
+  }
 
   const weekEnd = new Date();
   const weekStart = new Date(weekEnd.getTime() - 7 * 86400 * 1000);
@@ -87,7 +124,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         body: JSON.stringify({
           from: process.env.REPORT_FROM || 'Fides Reports <onboarding@resend.dev>',
           to,
-          subject: `Fides weekly — ${m.users_week} new users, ${m.paying_new_week} new paying`,
+          subject: `Fides weekly — ${money(m.revenue_week)} made, ${m.users_week} new users, ${m.trials_week} trials`,
           html: reportHtml(m, weekStart, weekEnd),
         }),
       });
