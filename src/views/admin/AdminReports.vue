@@ -183,7 +183,7 @@ async function runNow() {
   running.value = true
   error.value = ''
   try {
-    const res = await fetch('/api/reports/weekly', { method: 'POST' })
+    const res = await fetch('/api/reports', { method: 'POST' })
     if (!res.ok) {
       const data = await res.json().catch(() => ({}))
       error.value = data.error || 'Report run failed'
