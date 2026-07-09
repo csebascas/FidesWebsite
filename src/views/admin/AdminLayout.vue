@@ -66,6 +66,7 @@ const STROKE = 'stroke="currentColor" fill="none" stroke-linecap="round" stroke-
 
 const NAV_TOP = [
   { to: '/d/dashboard', label: 'Dashboard', icon: `<rect x="1.5" y="1.5" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/><rect x="7.9" y="1.5" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/><rect x="1.5" y="7.9" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/><rect x="7.9" y="7.9" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/>` },
+  { to: '/d/revenue', label: 'Revenue', icon: `<path d="M7 1.5v11M9.8 3.6H5.7a1.9 1.9 0 1 0 0 3.8h2.6a1.9 1.9 0 1 1 0 3.8H3.9" ${STROKE} stroke-width="1.2"/>` },
   { to: '/d/health', label: 'Health', icon: `<path d="M1.5 7h2.5l1.5-3.5L8 10.5 9.5 7h3" ${STROKE} stroke-width="1.2"/>` },
   { to: '/d/reports', label: 'Reports', icon: `<path d="M2.5 11.5V8M7 11.5V5M11.5 11.5V2.5" ${STROKE} stroke-width="1.3"/>` },
 ]

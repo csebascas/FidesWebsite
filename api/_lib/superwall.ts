@@ -55,30 +55,47 @@ SELECT
 FORMAT JSONEachRow`;
 }
 
-export async function fetchSuperwallMetrics(): Promise<SuperwallMetrics | null> {
-  const key = process.env.SUPERWALL_API_KEY;
-  if (!key) return null;
-
-  const appIds = APP_IDS.split(',')
+function joinedAppIds(): string {
+  return APP_IDS.split(',')
     .map((s) => parseInt(s.trim(), 10))
     .filter(Number.isFinite)
     .join(', ');
-  if (!appIds) return null;
+}
 
+// Runs a ClickHouse query and returns all JSONEachRow lines parsed.
+async function chQuery(sql: string): Promise<Record<string, unknown>[] | null> {
+  const key = process.env.SUPERWALL_API_KEY;
+  if (!key) return null;
   try {
     const res = await fetch(`https://api.superwall.com/v2/organizations/${ORG_ID}/query`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: buildQuery(appIds),
+      body: sql,
     });
     if (!res.ok) {
       console.error('[superwall] query failed', res.status, await res.text());
       return null;
     }
     const text = await res.text();
-    const line = text.trim().split('\n')[0];
-    if (!line) return null;
-    const row = JSON.parse(line);
+    return text
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+  } catch (e) {
+    console.error('[superwall] query failed', e);
+    return null;
+  }
+}
+
+export async function fetchSuperwallMetrics(): Promise<SuperwallMetrics | null> {
+  const appIds = joinedAppIds();
+  if (!appIds) return null;
+
+  try {
+    const rows = await chQuery(buildQuery(appIds));
+    const row = rows?.[0];
+    if (!row) return null;
     // ClickHouse returns uniq/count values as strings — normalize everything.
     const num = (v: unknown) => (v == null ? 0 : Number(v) || 0);
     return {
@@ -95,4 +112,112 @@ export async function fetchSuperwallMetrics(): Promise<SuperwallMetrics | null> 
     console.error('[superwall] query failed', e);
     return null;
   }
+}
+
+// Paywall analytics for the Revenue tab. Three sources, all validated against
+// the live warehouse 2026-07-08:
+//  - sw.events_hr_agg          → daily paywall/transaction funnel, last 30 days
+//  - paywall_open_events_agg   → lifetime opens per placement
+//  - attributed_events_by_ts   → lifetime trials/purchases per placement
+export interface PaywallDaily {
+  day: string;
+  opens: number;
+  declines: number;
+  tx_start: number;
+  tx_complete: number;
+  tx_abandon: number;
+}
+
+export interface PlacementStats {
+  placement: string;
+  users: number;
+  views: number;
+  trials: number;
+  purchases: number;
+  trial_conversions: number;
+}
+
+export interface PaywallAnalytics {
+  daily: PaywallDaily[];
+  placements: PlacementStats[];
+}
+
+export async function fetchPaywallAnalytics(): Promise<PaywallAnalytics | null> {
+  const appIds = joinedAppIds();
+  if (!appIds || !process.env.SUPERWALL_API_KEY) return null;
+
+  const dailySql = `
+SELECT toDate(ts) AS day, name, uniqMerge(count) AS cnt
+FROM sw.events_hr_agg
+WHERE applicationId IN (${appIds}) AND isSandbox = 0
+  AND name IN ('paywall_open', 'paywall_decline', 'transaction_start', 'transaction_complete', 'transaction_abandon')
+  AND ts >= now() - INTERVAL 30 DAY AND ts < now()
+GROUP BY day, name
+ORDER BY day
+FORMAT JSONEachRow`;
+
+  const opensSql = `
+SELECT placement,
+  uniqMerge(users_state) AS users,
+  uniqMerge(views_state) AS views
+FROM open_revenue.paywall_open_events_agg
+WHERE applicationId IN (${appIds}) AND environment = 'PRODUCTION'
+GROUP BY placement
+ORDER BY users DESC
+FORMAT JSONEachRow`;
+
+  const conversionsSql = `
+SELECT coalesce(placement, '') AS placement,
+  uniqIf(originalTransactionId, name = 'initial_purchase' AND lower(coalesce(periodType, '')) = 'trial') AS trials,
+  uniqIf(originalTransactionId, name = 'initial_purchase' AND lower(coalesce(periodType, '')) != 'trial') AS purchases,
+  uniqIf(originalTransactionId, name = 'renewal' AND isTrialConversion = 1) AS trial_conversions
+FROM open_revenue.attributed_events_by_ts_rep FINAL
+WHERE applicationId IN (${appIds}) AND isSandbox = 0
+  AND isFamilyShare = 0 AND isRefund = 0 AND ts < now()
+GROUP BY placement
+FORMAT JSONEachRow`;
+
+  const [dailyRows, openRows, convRows] = await Promise.all([
+    chQuery(dailySql),
+    chQuery(opensSql),
+    chQuery(conversionsSql),
+  ]);
+  if (!dailyRows && !openRows && !convRows) return null;
+
+  const num = (v: unknown) => (v == null ? 0 : Number(v) || 0);
+
+  const byDay = new Map<string, PaywallDaily>();
+  for (const r of dailyRows ?? []) {
+    const day = String(r.day);
+    const entry = byDay.get(day) ?? { day, opens: 0, declines: 0, tx_start: 0, tx_complete: 0, tx_abandon: 0 };
+    const cnt = num(r.cnt);
+    if (r.name === 'paywall_open') entry.opens += cnt;
+    else if (r.name === 'paywall_decline') entry.declines += cnt;
+    else if (r.name === 'transaction_start') entry.tx_start += cnt;
+    else if (r.name === 'transaction_complete') entry.tx_complete += cnt;
+    else if (r.name === 'transaction_abandon') entry.tx_abandon += cnt;
+    byDay.set(day, entry);
+  }
+
+  const placements = new Map<string, PlacementStats>();
+  for (const r of openRows ?? []) {
+    const placement = String(r.placement || 'unknown');
+    const entry = placements.get(placement) ?? { placement, users: 0, views: 0, trials: 0, purchases: 0, trial_conversions: 0 };
+    entry.users += num(r.users);
+    entry.views += num(r.views);
+    placements.set(placement, entry);
+  }
+  for (const r of convRows ?? []) {
+    const placement = String(r.placement || 'unknown');
+    const entry = placements.get(placement) ?? { placement, users: 0, views: 0, trials: 0, purchases: 0, trial_conversions: 0 };
+    entry.trials += num(r.trials);
+    entry.purchases += num(r.purchases);
+    entry.trial_conversions += num(r.trial_conversions);
+    placements.set(placement, entry);
+  }
+
+  return {
+    daily: [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day)),
+    placements: [...placements.values()].sort((a, b) => b.users - a.users),
+  };
 }

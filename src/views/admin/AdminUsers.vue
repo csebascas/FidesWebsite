@@ -157,9 +157,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { supabase } from '../../lib/supabase'
 import { adminRpc } from '../../lib/supabase'
+
+const route = useRoute()
 
 const users = ref<any[]>([])
 const loading = ref(true)
@@ -265,6 +268,17 @@ async function handleDelete() {
   deleting.value = false
 }
 
+// Deep links (/d/users?user=<id> from Feedback, Recent Activity, Revenue)
+// open the detail panel directly instead of dumping you on the bare list.
+function openFromQuery() {
+  const id = route.query.user
+  if (typeof id !== 'string' || !id) return
+  const user = users.value.find(u => u.id === id)
+  if (user) selectUser(user)
+}
+
+watch(() => route.query.user, openFromQuery)
+
 onMounted(async () => {
   const { data } = await adminRpc({
     action: 'select', table: 'users',
@@ -272,6 +286,7 @@ onMounted(async () => {
   })
   users.value = data ?? []
   loading.value = false
+  openFromQuery()
 })
 </script>
 

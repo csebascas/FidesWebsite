@@ -64,6 +64,11 @@ const routes = [
         meta: { title: 'Dashboard — Fides Admin', requiresAuth: true },
       },
       {
+        path: 'revenue',
+        component: () => import('../views/admin/AdminRevenue.vue'),
+        meta: { title: 'Revenue — Fides Admin', requiresAuth: true },
+      },
+      {
         path: 'health',
         component: () => import('../views/admin/AdminHealth.vue'),
         meta: { title: 'System Health — Fides Admin', requiresAuth: true },

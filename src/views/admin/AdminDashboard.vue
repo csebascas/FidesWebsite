@@ -37,7 +37,9 @@
             <div v-for="(a, i) in activity" :key="i" class="frow">
               <span class="fava" :class="{ gold: a.action === 'completed' }">{{ initials(a.name) }}</span>
               <span class="ftext">
-                <strong>{{ a.name }}</strong> {{ a.action === 'joined' ? 'joined' : 'completed' }}
+                <router-link v-if="a.user_id" :to="`/d/users?user=${a.user_id}`" class="flink strong">{{ a.name }}</router-link>
+                <strong v-else>{{ a.name }}</strong>
+                {{ a.action === 'joined' ? 'joined' : 'completed' }}
                 <router-link v-if="a.lesson_id" :to="`/d/content/lessons/${a.lesson_id}`" class="flink">{{ a.detail }}</router-link>
                 <template v-else>{{ a.detail || '' }}</template>
               </span>
@@ -242,6 +244,8 @@ onMounted(async () => {
 .ftext { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ftext strong { color: var(--text); font-weight: 600; }
 .flink { color: var(--gold-light); text-decoration: none; }
+.flink.strong { color: var(--text); font-weight: 600; }
+.flink.strong:hover { color: var(--gold-light); }
 .flink:hover { text-decoration: underline; }
 .ftime { font-size: 10.5px; color: var(--text-3); flex-shrink: 0; }
 
