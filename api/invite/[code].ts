@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const rawCode = req.query.code;
   const code = (Array.isArray(rawCode) ? rawCode[0] : rawCode)?.toString().toUpperCase().trim();
-  if (!code || code.length !== 6) {
+  if (!code || code.length < 3 || code.length > 32) {
     res.status(400).json({ error: 'invalid_code' });
     return;
   }

@@ -25,7 +25,8 @@ function detectPlatform(): 'ios' | 'android' | 'unknown' {
 const platform = ref<'ios' | 'android' | 'unknown'>('unknown')
 
 async function loadInviter() {
-  if (!code.value || code.value.length !== 6) {
+  // Codes are variable length (friend = 6, creator codes can be longer).
+  if (!code.value || code.value.length < 3 || code.value.length > 32) {
     notFound.value = true
     loading.value = false
     return
