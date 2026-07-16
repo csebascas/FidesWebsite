@@ -23,6 +23,7 @@ const ALLOWED_TABLES = [
   'saints', 'tracks', 'pillars', 'feedback', 'content_reports',
   'topic_requests', 'user_lesson_progress', 'user_track_progress',
   'user_saint_unlocks', 'user_badges', 'league_entries',
+  'partner_codes', 'partner_attributions', 'partner_referral_stats',
 ];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -64,19 +65,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (action === 'insert') {
       if (!data) return res.status(400).json({ error: 'data is required for insert' });
-      const { data: row, error } = await supabase.from(tableName).insert(data).select('id').single();
+      // select('*') (not 'id') so tables whose PK isn't `id` (e.g. partner_codes,
+      // keyed on `code`) don't error. Callers that read `.data.id` still work.
+      const { data: row, error } = await supabase.from(tableName).insert(data).select('*').single();
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ data: row });
     }
 
     if (action === 'update') {
-      if (!id || !data) return res.status(400).json({ error: 'id and data are required for update' });
+      // Update by `id`, or by `match` for tables keyed on another column
+      // (e.g. partner_codes.code).
+      if ((!id && !match) || !data) return res.status(400).json({ error: 'id or match, plus data, are required for update' });
       const updates = { ...data };
       delete updates.id;
       delete updates.created_at;
-      const { data: row, error } = await supabase.from(tableName).update(updates).eq('id', id).select('*').single();
+      let query = supabase.from(tableName).update(updates);
+      if (id) query = query.eq('id', id);
+      if (match) {
+        for (const [key, val] of Object.entries(match)) {
+          query = query.eq(key, val);
+        }
+      }
+      const { data: rows, error } = await query.select('*');
       if (error) return res.status(500).json({ error: error.message });
-      return res.status(200).json({ data: row });
+      return res.status(200).json({ data: Array.isArray(rows) ? rows[0] : rows });
     }
 
     if (action === 'delete') {
