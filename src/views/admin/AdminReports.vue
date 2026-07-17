@@ -59,6 +59,35 @@
       </div>
     </div>
 
+    <div v-if="latest && latest.metrics.activation_rate != null" class="card rise" style="--i: 1">
+      <div class="card-eyebrow">Engagement</div>
+      <div class="mrow">
+        <span class="ml">Active this week</span>
+        <span class="mn">{{ latest.metrics.active_week ?? 0 }}</span>
+        <span class="md">did a real lesson</span>
+      </div>
+      <div class="mrow">
+        <span class="ml">Activation rate</span>
+        <span class="mn" :class="rag(latest.metrics.activation_rate, 30, 42)">{{ latest.metrics.activation_rate ?? 0 }}%</span>
+        <span class="md">2+ active days, wk1</span>
+      </div>
+      <div class="mrow">
+        <span class="ml">Week-1 retention</span>
+        <span class="mn" :class="rag(latest.metrics.retention_w1, 28, 45)">{{ latest.metrics.retention_w1 ?? 0 }}%</span>
+        <span class="md">last week's cohort</span>
+      </div>
+      <div class="mrow">
+        <span class="ml">On a streak</span>
+        <span class="mn" :class="rag(latest.metrics.streak_on_pct, 20, 40)">{{ latest.metrics.streak_on_pct ?? 0 }}%</span>
+        <span class="md">vs Duolingo ~40%+</span>
+      </div>
+      <div class="mrow">
+        <span class="ml">Streak deaths</span>
+        <span class="mn" :class="{ flame: (latest.metrics.streak_deaths_week ?? 0) > 0 }">{{ latest.metrics.streak_deaths_week ?? 0 }}</span>
+        <span class="md">this week</span>
+      </div>
+    </div>
+
     <div v-if="trends.length >= 2" class="section rise" style="--i: 2">
       <h2 class="section-title">Trends — week over week</h2>
       <div class="tgrid">
@@ -141,6 +170,10 @@ const trendTiles = computed<TrendTile[]>(() => {
     { label: 'New paying / wk', value: (m) => m.paying_new_week ?? 0 },
     { label: 'Paying subs', gold: true, value: (m) => (m.paying_monthly ?? 0) + (m.paying_yearly ?? 0) },
     { label: 'Pro users', gold: true, value: (m) => m.pro_total ?? 0 },
+    { label: 'Active / wk', value: (m) => m.active_week ?? 0 },
+    { label: 'Activation %', value: (m) => m.activation_rate ?? 0 },
+    { label: 'Retention W1 %', value: (m) => m.retention_w1 ?? 0 },
+    { label: 'On a streak %', value: (m) => m.streak_on_pct ?? 0 },
   ]
   return defs.map((d) => {
     const values = trends.value.map((r) => ({ week: fmtDay(r.week_start + 'T00:00:00'), value: d.value(r.metrics) }))
@@ -156,6 +189,13 @@ const trendTiles = computed<TrendTile[]>(() => {
 
 function fmtDay(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+// RAG vs benchmark band: green at/above best-in-class, amber on par, red below.
+function rag(v: any, mid: number, high: number): string {
+  const n = Number(v)
+  if (Number.isNaN(n)) return ''
+  return n >= high ? 'good' : n >= mid ? 'mid' : 'bad'
 }
 
 function money(n: number | undefined | null): string {
@@ -252,6 +292,11 @@ onMounted(load)
 .ml { flex: 1; font-size: 12.5px; color: var(--text-2); }
 .mn { font-size: 16px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 .mn.gold { color: var(--gold-light); }
+.mn.flame { color: #D4673A; }
+.mn.good { color: #34c759; }
+.mn.mid { color: var(--gold-light); }
+.mn.bad { color: #D4673A; }
+.card-eyebrow { font-family: var(--sans); font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
 .md { width: 110px; text-align: right; font-size: 11px; color: var(--text-3); }
 .md.up { color: #7FB08A; }
 

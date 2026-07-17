@@ -87,7 +87,7 @@
               <tr v-for="c in cohorts" :key="c.date">
                 <td>{{ c.week }}</td>
                 <td class="num">{{ c.users }}</td>
-                <td v-for="w in [1,2,4,8]" :key="w" class="num cell" :class="{ future: !isMature(c, w) }" :style="cellStyle(c, w)">
+                <td v-for="w in [1,2,4,8]" :key="w" class="num cell" :class="[{ future: !isMature(c, w) }, cohortRag(c, w)]">
                   {{ isMature(c, w) ? cohortPct(c, w) + '%' : '—' }}
                 </td>
               </tr>
@@ -211,10 +211,15 @@ function weeksSince(d: string): number {
   return Math.floor((Date.now() - new Date(d + 'T00:00:00Z').getTime()) / (7 * 864e5))
 }
 function isMature(c: any, wk: number): boolean { return weeksSince(c.date) >= wk }
-function cellStyle(c: any, wk: number) {
-  if (!isMature(c, wk)) return {}
+// Per-week retention benchmark bands [category-median, best-in-class]. Retention
+// decays each week, so the bar drops. Below median = red, on par = amber,
+// at/above best-in-class = green.
+const COHORT_BANDS: Record<number, [number, number]> = { 1: [25, 45], 2: [15, 30], 4: [8, 20], 8: [5, 12] }
+function cohortRag(c: any, wk: number): string {
+  if (!isMature(c, wk)) return ''
   const p = cohortPct(c, wk)
-  return { background: `rgba(52, 199, 89, ${Math.min(0.05 + (p / 100) * 0.5, 0.55)})` }
+  const [mid, high] = COHORT_BANDS[wk]
+  return p >= high ? 'good' : p >= mid ? 'mid' : 'bad'
 }
 
 onMounted(async () => {
@@ -286,6 +291,9 @@ onMounted(async () => {
 .cohort th.num, .cohort td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .cohort td { padding: 9px 12px; border-bottom: 1px solid var(--line); color: var(--text-2); }
 .cohort td.cell { color: var(--text); border-radius: 4px; }
+.cohort td.cell.good { background: rgba(52,199,89,0.18); color: #4ad168; }
+.cohort td.cell.mid  { background: rgba(196,145,44,0.16); color: var(--gold-light); }
+.cohort td.cell.bad  { background: rgba(212,103,58,0.16); color: #e0805c; }
 .cohort td.future { color: var(--text-3); background: rgba(255,255,255,0.02) !important; }
 
 .bench { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 13px; }
