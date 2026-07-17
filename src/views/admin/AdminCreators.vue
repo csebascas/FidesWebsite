@@ -18,15 +18,15 @@
         <div class="form-grid">
           <div class="input-row">
             <label>Code</label>
-            <input v-model="newCode" placeholder="SAMMYISCATHOLIC" maxlength="32" @input="newCode = newCode.toUpperCase().replace(/[^0-9A-Z]/g, '')" />
+            <input v-model="newCode" placeholder="CREATORCODE" maxlength="32" @input="newCode = newCode.toUpperCase().replace(/[^0-9A-Z]/g, '')" />
           </div>
           <div class="input-row">
             <label>Creator name</label>
-            <input v-model="newName" placeholder="Sammy" />
+            <input v-model="newName" placeholder="Creator's name" />
           </div>
           <div class="input-row">
             <label>Handle <span class="opt">(optional)</span></label>
-            <input v-model="newHandle" placeholder="@sammyiscatholic" />
+            <input v-model="newHandle" placeholder="@handle" />
           </div>
           <div class="input-row">
             <label>Avatar URL <span class="opt">(optional)</span></label>
@@ -41,7 +41,7 @@
           <span class="form-error" v-if="formError">{{ formError }}</span>
           <button class="create-btn" :disabled="creating" @click="createCode">{{ creating ? 'Creating…' : 'Create code' }}</button>
         </div>
-        <p class="hint">Blank Pro-days uses the global referral <code>base_days</code>. New users get that many days of Pro when they enter the code — and see the same reveal ("Sammy invited you to Fides") they'd get from a friend invite.</p>
+        <p class="hint">Blank Pro-days uses the global referral <code>base_days</code>. New users get that many days of Pro when they enter the code — and see the same “&lt;name&gt; invited you to Fides” reveal they'd get from a friend invite.</p>
       </div>
     </div>
 
