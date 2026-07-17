@@ -29,6 +29,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ ...data, superwall, paywalls });
   }
 
+  // ?view=growth serves the Growth tab: activation funnel + weekly retention.
+  if (req.query.view === 'growth') {
+    const { data, error } = await supabase.rpc('admin_growth_data');
+    if (error) return res.status(500).json({ error: error.message });
+    return res.status(200).json(data);
+  }
+
   const { data, error } = await supabase.rpc('admin_dashboard_data');
   if (error) return res.status(500).json({ error: error.message });
 
