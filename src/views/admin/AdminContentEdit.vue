@@ -239,8 +239,12 @@
                 <p v-if="step.summary" class="preview-explanation">{{ step.summary }}</p>
               </div>
               <div v-else-if="stepType === 'explanation'">
-                <h2 class="preview-heading">{{ step.title }}</h2>
-                <p class="preview-body">{{ step.body }}</p>
+                <div class="step-eyebrow">{{ step.title || 'The key idea' }}</div>
+                <p class="exp-lead">{{ step.body }}</p>
+                <div v-if="step.quote" class="exp-pullquote">
+                  <div class="exp-q">"{{ step.quote }}"</div>
+                  <div v-if="step.attribution" class="exp-a">{{ step.attribution }}</div>
+                </div>
               </div>
               <div v-else-if="stepType === 'xp-award'">
                 <div class="preview-xp">
@@ -890,15 +894,15 @@ async function saveBody() {
 
 /* Stat */
 .stat-display {
-  text-align: center;
   margin-bottom: 14px;
 }
 .stat-value {
-  font-family: var(--sans);
-  font-size: 36px;
-  font-weight: 700;
+  font-family: var(--serif);
+  font-size: 42px;
+  font-weight: 500;
   color: var(--gold-light);
   display: block;
+  line-height: 1;
 }
 .stat-label-text {
   font-family: var(--sans);
@@ -906,19 +910,27 @@ async function saveBody() {
   color: var(--text-3);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  margin-top: 6px;
+  display: block;
 }
 
-/* Scripture */
+/* Scripture — verses in a card, per the mockup (.scriptCard) */
 .scripture-ref {
   font-family: var(--sans);
   font-size: 11px;
   font-weight: 600;
-  color: var(--gold-light);
+  color: var(--gold);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin: 0 0 12px;
+  letter-spacing: 1px;
+  margin: 0 0 10px;
 }
-.scripture-verse { margin-bottom: 8px; }
+.scripture-verse {
+  background: #181818;
+  border: 0.5px solid var(--line);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 10px;
+}
 .verse-num {
   font-family: var(--sans);
   font-size: 10px;
@@ -929,8 +941,9 @@ async function saveBody() {
 }
 .verse-text {
   font-family: var(--serif);
-  font-size: 14px;
-  line-height: 1.6;
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.55;
   color: var(--text);
 }
 .verse-annotation {
@@ -985,28 +998,50 @@ async function saveBody() {
   margin: 0;
 }
 
-/* Interpretations */
+/* Interpretations — the Four Senses as colored lens tabs (mockup .lens) */
 .interp-view {
-  margin-bottom: 10px;
-  padding: 10px;
-  background: var(--surface);
-  border-radius: 6px;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 0;
+  background: none;
 }
+.interp-view::before {
+  content: '';
+  width: 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: var(--gold);
+}
+.interp-view:nth-of-type(2)::before { background: #6B8EB8; }
+.interp-view:nth-of-type(3)::before { background: #6BB887; }
+.interp-view:nth-of-type(4)::before { background: #B8556B; }
 .interp-label {
   font-family: var(--sans);
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  font-weight: 700;
   color: var(--gold-light);
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
+.interp-view:nth-of-type(2) .interp-label { color: #8FB0D6; }
+.interp-view:nth-of-type(3) .interp-label { color: #86CBA0; }
+.interp-view:nth-of-type(4) .interp-label { color: #D17E91; }
 .interp-text {
   font-family: var(--sans);
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 13.5px;
+  line-height: 1.5;
   color: var(--text-2);
   margin: 0;
 }
+
+/* Explanation — takeaway beat (mockup: eyebrow + lead + pull-quote) */
+.exp-lead { font-family: var(--sans); font-size: 17px; line-height: 1.55; color: var(--text); margin: 0; }
+.exp-pullquote { border-left: 2px solid rgba(196,145,44,0.4); padding: 4px 0 4px 14px; margin-top: 20px; }
+.exp-q { font-family: var(--serif); font-style: italic; font-size: 16px; line-height: 1.5; color: var(--text); }
+.exp-a { font-family: var(--sans); font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-3); margin-top: 8px; }
 
 /* Fill blank */
 .fill-blank {
