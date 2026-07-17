@@ -15,14 +15,20 @@
           {{ item.label }}
         </router-link>
 
+        <span class="nav-section">Revenue &amp; Partners</span>
+        <router-link v-for="item in NAV_MONEY" :key="item.to" :to="item.to" class="nav-item" @click="closeSidebar">
+          <svg class="icon" width="14" height="14" viewBox="0 0 14 14" v-html="item.icon"></svg>
+          {{ item.label }}
+        </router-link>
+
         <span class="nav-section">Content</span>
         <router-link v-for="item in NAV_CONTENT" :key="item.to" :to="item.to" class="nav-item" @click="closeSidebar">
           <svg class="icon" width="14" height="14" viewBox="0 0 14 14" v-html="item.icon"></svg>
           {{ item.label }}
         </router-link>
 
-        <span class="nav-section">Management</span>
-        <router-link v-for="item in NAV_MGMT" :key="item.to" :to="item.to" class="nav-item" @click="closeSidebar">
+        <span class="nav-section">Operations</span>
+        <router-link v-for="item in NAV_OPS" :key="item.to" :to="item.to" class="nav-item" @click="closeSidebar">
           <svg class="icon" width="14" height="14" viewBox="0 0 14 14" v-html="item.icon"></svg>
           {{ item.label }}
         </router-link>
@@ -66,10 +72,11 @@ const STROKE = 'stroke="currentColor" fill="none" stroke-linecap="round" stroke-
 
 const NAV_TOP = [
   { to: '/d/dashboard', label: 'Dashboard', icon: `<rect x="1.5" y="1.5" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/><rect x="7.9" y="1.5" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/><rect x="1.5" y="7.9" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/><rect x="7.9" y="7.9" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/>` },
-  { to: '/d/revenue', label: 'Revenue', icon: `<path d="M7 1.5v11M9.8 3.6H5.7a1.9 1.9 0 1 0 0 3.8h2.6a1.9 1.9 0 1 1 0 3.8H3.9" ${STROKE} stroke-width="1.2"/>` },
-  { to: '/d/health', label: 'Health', icon: `<path d="M1.5 7h2.5l1.5-3.5L8 10.5 9.5 7h3" ${STROKE} stroke-width="1.2"/>` },
-  { to: '/d/reports', label: 'Reports', icon: `<path d="M2.5 11.5V8M7 11.5V5M11.5 11.5V2.5" ${STROKE} stroke-width="1.3"/>` },
   { to: '/d/growth', label: 'Growth', icon: `<path d="M2 11.5L5.5 7.5L8 9.5L12 4" ${STROKE} stroke-width="1.3"/><path d="M9 4h3v3" ${STROKE} stroke-width="1.3"/>` },
+]
+
+const NAV_MONEY = [
+  { to: '/d/revenue', label: 'Revenue', icon: `<path d="M7 1.5v11M9.8 3.6H5.7a1.9 1.9 0 1 0 0 3.8h2.6a1.9 1.9 0 1 1 0 3.8H3.9" ${STROKE} stroke-width="1.2"/>` },
   { to: '/d/creators', label: 'Creators', icon: `<circle cx="7" cy="4.4" r="2.3" ${STROKE} stroke-width="1.1"/><path d="M2.6 11.6a4.4 4.4 0 0 1 8.8 0" ${STROKE} stroke-width="1.1"/><path d="M11 2.2l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z" ${STROKE} stroke-width="0.9"/>` },
   { to: '/d/creator-of-month', label: 'Creator of Month', icon: `<path d="M7 1.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L7 9.8 3.8 11.6l.6-3.6L1.8 5.4l3.6-.5z" ${STROKE} stroke-width="1.1"/>` },
 ]
@@ -83,10 +90,12 @@ const NAV_CONTENT = [
   { to: '/d/content/pillars', label: 'Pillars', icon: `<path d="M2.5 12V5.5M7 12V5.5M11.5 12V5.5M1.5 12.5h11M1.8 5l5.2-3 5.2 3z" ${STROKE} stroke-width="1.1"/>` },
 ]
 
-const NAV_MGMT = [
-  { to: '/d/downloads', label: 'Downloads', icon: `<path d="M7 1.8v7M4.2 6.2 7 9l2.8-2.8M2.2 11.6h9.6" ${STROKE} stroke-width="1.2"/>` },
+const NAV_OPS = [
   { to: '/d/users', label: 'Users', icon: `<circle cx="7" cy="4.6" r="2.4" ${STROKE} stroke-width="1.1"/><path d="M2.4 12a4.8 4.8 0 0 1 9.2 0" ${STROKE} stroke-width="1.1"/>` },
   { to: '/d/feedback', label: 'Feedback', icon: `<path d="M2 3.4C2 2.6 2.6 2 3.4 2h7.2c.8 0 1.4.6 1.4 1.4v4.8c0 .8-.6 1.4-1.4 1.4H6.5l-2.8 2.6V9.6H3.4C2.6 9.6 2 9 2 8.2V3.4z" ${STROKE} stroke-width="1.1"/>` },
+  { to: '/d/downloads', label: 'Downloads', icon: `<path d="M7 1.8v7M4.2 6.2 7 9l2.8-2.8M2.2 11.6h9.6" ${STROKE} stroke-width="1.2"/>` },
+  { to: '/d/health', label: 'Health', icon: `<path d="M1.5 7h2.5l1.5-3.5L8 10.5 9.5 7h3" ${STROKE} stroke-width="1.2"/>` },
+  { to: '/d/reports', label: 'Reports', icon: `<path d="M2.5 11.5V8M7 11.5V5M11.5 11.5V2.5" ${STROKE} stroke-width="1.3"/>` },
 ]
 
 const router = useRouter()

@@ -9,9 +9,9 @@
     <template v-else>
       <!-- Headline stats -->
       <div class="statstrip">
-        <div class="stat"><span class="n gold">{{ activation.rate_pct ?? '—' }}%</span><span class="l">Activation rate</span><span class="d">{{ activation.activated }}/{{ activation.new_users }} new users</span></div>
-        <div class="stat"><span class="n">{{ pct(funnel.returned_day2plus) }}%</span><span class="l">Return day 2+</span></div>
-        <div class="stat"><span class="n">{{ streaks.seven_plus ?? 0 }}</span><span class="l">Streak ≥ 7</span></div>
+        <div class="stat"><span class="n" :class="ragClass(activation.rate_pct, 30, 42)">{{ activation.rate_pct ?? '—' }}%</span><span class="l">Activation rate</span><span class="d">{{ activation.activated }}/{{ activation.new_users }} new users</span></div>
+        <div class="stat"><span class="n" :class="ragClass(pct(funnel.returned_day2plus), 28, 45)">{{ pct(funnel.returned_day2plus) }}%</span><span class="l">Return day 2+</span><span class="d">vs Duolingo ~50%</span></div>
+        <div class="stat"><span class="n" :class="ragClass(streakOnPct, 20, 40)">{{ streakOnPct }}%</span><span class="l">On a streak</span><span class="d">vs Duolingo ~40%+</span></div>
         <div class="stat"><span class="n" :class="{ flame: (streaks.deaths_7d ?? 0) > 0 }">{{ streaks.deaths_7d ?? 0 }}</span><span class="l">Streak deaths 7d</span></div>
       </div>
 
@@ -164,9 +164,20 @@ function verdict(v: number | null, mid: number, high: number): string {
 function vClass(v: string): string {
   return v === 'Strong' ? 'good' : v === 'Below' ? 'bad' : 'mid'
 }
+// Numeric RAG: green at/above best-in-class band, amber on-par, red below.
+function ragClass(v: any, mid: number, high: number): string {
+  const n = Number(v)
+  if (Number.isNaN(n)) return ''
+  return n >= high ? 'good' : n >= mid ? 'mid' : 'bad'
+}
 
 // Industry reference bands (approximate, from public reports — Duolingo
 // disclosures, education/subscription app retention studies). Directional.
+const streakOnPct = computed(() => {
+  const total = funnel.value?.signed_up || 0
+  return total ? Math.round(((total - Number(streaks.value.zero || 0)) / total) * 100) : 0
+})
+
 const benchmarks = computed(() => {
   const f = funnel.value, total = f.signed_up || 0
   const streakOn = total ? Math.round(((total - Number(streaks.value.zero || 0)) / total) * 100) : 0
@@ -234,6 +245,9 @@ onMounted(async () => {
 .stat .n { font-family: var(--serif); font-size: 26px; color: var(--text); line-height: 1; }
 .stat .n.gold { color: var(--gold-light); }
 .stat .n.flame { color: #D4673A; }
+.stat .n.good { color: #34c759; }
+.stat .n.mid { color: var(--gold-light); }
+.stat .n.bad { color: #D4673A; }
 .stat .l { font-family: var(--sans); font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
 .stat .d { font-family: var(--sans); font-size: 11px; color: var(--text-3); }
 
