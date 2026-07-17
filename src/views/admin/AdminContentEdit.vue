@@ -87,8 +87,9 @@
         </div>
 
         <div class="phone-frame">
-          <div class="phone-status">
-            <span class="step-progress">{{ currentStep + 1 }} / {{ steps.length }}</span>
+          <div class="phone-top">
+            <span class="phone-x">&times;</span>
+            <div class="phone-track"><div class="phone-fill" :style="{ width: (((currentStep + 1) / steps.length) * 100) + '%' }"></div></div>
           </div>
           <div class="phone-content" v-if="step">
             <div class="step-type-badge">{{ stepType }}</div>
@@ -691,28 +692,28 @@ async function saveBody() {
 }
 
 /* ─── Phone Frame ─── */
+/* Preview — matched to lesson-slides-mockup-2.html (the app's real slide look) */
 .phone-frame {
-  background: var(--bg);
-  border: 1px solid #222;
-  border-radius: 28px;
+  background: #0C0C0C;
+  border: 1px solid #1c1c1c;
+  border-radius: 36px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.phone-status {
-  padding: 16px 20px 8px;
-  text-align: center;
+.phone-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px 10px;
 }
-
-.step-progress {
-  font-family: var(--sans);
-  font-size: 11px;
-  color: var(--text-3);
-}
+.phone-x { color: var(--text-2); font-size: 20px; line-height: 1; }
+.phone-track { flex: 1; height: 4px; background: #222; border-radius: 100px; overflow: hidden; }
+.phone-fill { height: 100%; background: var(--gold); border-radius: 100px; transition: width 0.2s; }
 
 .phone-content {
-  padding: 16px 20px;
+  padding: 12px 28px 4px;
   min-height: 360px;
   max-height: 520px;
   overflow-y: auto;
@@ -721,82 +722,86 @@ async function saveBody() {
 }
 
 .step-type-badge {
+  align-self: flex-start;
   font-family: var(--sans);
   font-size: 9px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--gold-light);
-  margin-bottom: 16px;
+  letter-spacing: 1.5px;
+  color: var(--text-3);
+  border: 0.5px solid var(--line);
+  border-radius: 100px;
+  padding: 3px 9px;
+  margin-bottom: 18px;
 }
 
-.step-preview-content {
-  flex: 1;
-}
+.step-preview-content { flex: 1; }
 
+/* Titles — Playfair, the mockup's 500-weight editorial scale */
 .preview-heading {
   font-family: var(--serif);
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 23px;
+  font-weight: 500;
   color: var(--text);
-  line-height: 1.3;
-  margin: 0 0 12px;
+  line-height: 1.22;
+  letter-spacing: -0.2px;
+  margin: 4px 0 14px;
 }
 
 .preview-body {
   font-family: var(--sans);
-  font-size: 14px;
-  line-height: 1.65;
-  color: var(--text-2);
-  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+  margin: 0 0 10px;
 }
 
 .preview-source {
   font-family: var(--sans);
-  font-size: 12px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
   color: var(--text-3);
-  margin-top: 12px;
-  font-style: italic;
+  margin-top: 16px;
 }
 
+/* Quote → accented pull-quote with attribution (mockup .pullquote) */
 .preview-quote {
   font-family: var(--serif);
-  font-size: 18px;
+  font-style: italic;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--text);
-  border-left: 2px solid var(--gold);
-  padding-left: 16px;
-  margin: 0;
+  border-left: 2px solid rgba(196,145,44,0.4);
+  padding: 4px 0 4px 14px;
+  margin: 6px 0 0;
 }
 
 .preview-question {
   font-family: var(--serif);
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 500;
   color: var(--text);
-  line-height: 1.35;
-  margin: 0 0 16px;
+  line-height: 1.3;
+  margin: 0 0 18px;
 }
 
-.preview-options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.preview-options { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
 
 .preview-option {
   font-family: var(--sans);
   font-size: 14px;
-  color: var(--text-2);
-  padding: 12px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--line);
-  background: var(--surface);
+  color: var(--text);
+  padding: 13px 15px;
+  border-radius: 8px;
+  border: 0.5px solid var(--line);
+  background: #181818;
+  line-height: 1.4;
 }
-
 .preview-option.correct {
-  border-color: #34C759;
-  color: #34C759;
+  border-color: rgba(52,199,89,0.5);
+  background: rgba(52,199,89,0.08);
+  color: #4ad168;
 }
 
 .preview-xp {
@@ -804,23 +809,11 @@ async function saveBody() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 200px;
+  gap: 8px;
+  height: 220px;
 }
-
-.xp-number {
-  font-family: var(--sans);
-  font-size: 48px;
-  font-weight: 700;
-  color: var(--gold-light);
-}
-
-.xp-label {
-  font-family: var(--sans);
-  font-size: 14px;
-  color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 2px;
-}
+.xp-number { font-family: var(--serif); font-size: 52px; font-weight: 500; color: var(--gold-light); }
+.xp-label { font-family: var(--sans); font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 2px; }
 
 .preview-json {
   font-family: monospace;
@@ -1188,19 +1181,20 @@ async function saveBody() {
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--gold-light);
-  margin-bottom: 8px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  margin-bottom: 12px;
   display: block;
 }
 
 .article-title-preview {
   font-family: var(--serif);
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 27px;
+  font-weight: 500;
   color: var(--text);
-  line-height: 1.25;
-  margin: 0 0 8px;
+  line-height: 1.16;
+  letter-spacing: -0.3px;
+  margin: 0 0 10px;
 }
 
 .article-type-badge {
@@ -1215,30 +1209,44 @@ async function saveBody() {
   border-radius: 4px;
 }
 
-.article-block { margin-bottom: 16px; }
+.article-block { margin-bottom: 14px; }
 
+/* Section headings render as gold eyebrows, per the mockup (.artSecEye) */
 .ab-heading {
-  font-family: var(--serif);
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-  margin: 0;
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin: 22px 0 2px;
 }
 
 .ab-text {
   font-family: var(--sans);
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 15px;
+  line-height: 1.62;
   color: var(--text-2);
   margin: 0;
+}
+/* First paragraph reads as a lead — brighter, with a serif drop-cap */
+.article-block:first-of-type .ab-text { color: var(--text); }
+.article-block:first-of-type .ab-text::first-letter {
+  font-family: var(--serif);
+  font-size: 46px;
+  line-height: 38px;
+  float: left;
+  margin: 4px 8px -2px 0;
+  color: var(--gold-light);
 }
 
 .ab-quote {
   font-family: var(--serif);
-  font-size: 15px;
+  font-style: italic;
+  font-size: 16px;
   line-height: 1.5;
   color: var(--text);
-  border-left: 2px solid var(--gold);
+  border-left: 2px solid rgba(196,145,44,0.4);
   padding-left: 14px;
   margin: 0;
 }
