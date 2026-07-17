@@ -62,28 +62,52 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.code" :class="{ paused: !row.active }">
-            <td>
-              <div class="creator-cell">
-                <span class="creator-name">{{ row.creator_name }}</span>
-                <span v-if="row.creator_handle" class="creator-handle">{{ row.creator_handle }}</span>
-              </div>
-            </td>
-            <td>
-              <code class="code">{{ row.code }}</code>
-              <button class="copy-btn" @click="copyLink(row.code)">{{ copied === row.code ? 'Copied' : 'Copy link' }}</button>
-            </td>
-            <td class="num">{{ num(row.signups) }}</td>
-            <td class="num gold">{{ num(row.joined_pro) }}</td>
-            <td class="num">{{ num(row.trials) }}</td>
-            <td class="num gold">{{ num(row.paid_conversions) }}</td>
-            <td class="num">{{ row.pct_joined_pro != null ? row.pct_joined_pro + '%' : '—' }}</td>
-            <td>
-              <button class="status-btn" :class="{ on: row.active }" @click="toggleActive(row)">
-                {{ row.active ? 'Active' : 'Paused' }}
-              </button>
-            </td>
-          </tr>
+          <template v-for="row in rows" :key="row.code">
+            <tr :class="{ paused: !row.active, 'row-open': expanded === row.code }">
+              <td>
+                <button class="creator-toggle" @click="toggleExpand(row.code)" :title="expanded === row.code ? 'Hide who was referred' : 'Show who was referred'">
+                  <span class="chev" :class="{ open: expanded === row.code }">▸</span>
+                  <span class="creator-cell">
+                    <span class="creator-name">{{ row.creator_name }}</span>
+                    <span v-if="row.creator_handle" class="creator-handle">{{ row.creator_handle }}</span>
+                  </span>
+                </button>
+              </td>
+              <td>
+                <code class="code">{{ row.code }}</code>
+                <button class="copy-btn" @click="copyLink(row.code)">{{ copied === row.code ? 'Copied' : 'Copy link' }}</button>
+              </td>
+              <td class="num">{{ num(row.signups) }}</td>
+              <td class="num gold">{{ num(row.joined_pro) }}</td>
+              <td class="num">{{ num(row.trials) }}</td>
+              <td class="num gold">{{ num(row.paid_conversions) }}</td>
+              <td class="num">{{ row.pct_joined_pro != null ? row.pct_joined_pro + '%' : '—' }}</td>
+              <td>
+                <button class="status-btn" :class="{ on: row.active }" @click="toggleActive(row)">
+                  {{ row.active ? 'Active' : 'Paused' }}
+                </button>
+              </td>
+            </tr>
+            <tr v-if="expanded === row.code" class="detail-row">
+              <td colspan="8">
+                <div v-if="usersLoading === row.code" class="detail-note">Loading…</div>
+                <div v-else-if="(usersByCode[row.code] || []).length === 0" class="detail-note">No signups yet for this code.</div>
+                <div v-else class="referred-list">
+                  <div class="referred-head">
+                    <span>Referred user</span><span>Joined</span><span>Status</span>
+                  </div>
+                  <div v-for="u in usersByCode[row.code]" :key="u.user_id" class="referred-row">
+                    <div class="referred-who">
+                      <span class="referred-name">{{ u.display_name || (u.username ? '@' + u.username : 'Pilgrim') }}</span>
+                      <span v-if="u.username && u.display_name" class="referred-handle">@{{ u.username }}</span>
+                    </div>
+                    <span class="referred-date">{{ formatDate(u.redeemed_at) }}</span>
+                    <span class="status-pill" :class="u.status">{{ statusLabel(u.status) }}</span>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </template>
           <tr v-if="!loading && rows.length === 0">
             <td colspan="8" class="empty">No creator codes yet. Create one above.</td>
           </tr>
@@ -110,6 +134,37 @@ const newDays = ref('')
 const creating = ref(false)
 const formError = ref('')
 const copied = ref('')
+
+// Drill-down: which creator is expanded, and the per-user list per code.
+const expanded = ref<string | null>(null)
+const usersByCode = ref<Record<string, any[]>>({})
+const usersLoading = ref<string | null>(null)
+
+async function toggleExpand(code: string) {
+  if (expanded.value === code) { expanded.value = null; return }
+  expanded.value = code
+  if (!usersByCode.value[code]) {
+    usersLoading.value = code
+    const { data } = await adminRpc({
+      action: 'select',
+      table: 'partner_referral_users',
+      match: { code },
+      order: { column: 'redeemed_at', ascending: false },
+      limit: 500,
+    })
+    usersByCode.value = { ...usersByCode.value, [code]: data ?? [] }
+    usersLoading.value = null
+  }
+}
+
+function statusLabel(s: string): string {
+  return s === 'paid' ? 'Paid' : s === 'trial' ? 'Trial' : 'Signed up'
+}
+
+function formatDate(d: string): string {
+  if (!d) return '—'
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
 
 const totals = computed(() =>
   rows.value.reduce(
@@ -445,6 +500,111 @@ tr.paused {
   color: #34c759;
   border-color: rgba(52, 199, 89, 0.4);
 }
+
+/* ── Drill-down: who got referred ── */
+.creator-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.chev {
+  color: var(--text-3);
+  font-size: 11px;
+  transition: transform 0.15s;
+  display: inline-block;
+}
+.chev.open {
+  transform: rotate(90deg);
+  color: var(--gold-light);
+}
+tr.row-open td {
+  border-bottom-color: transparent;
+}
+.detail-row td {
+  padding: 0 12px 14px;
+  background: rgba(255, 255, 255, 0.015);
+}
+.detail-note {
+  font-family: var(--sans);
+  font-size: 12.5px;
+  color: var(--text-3);
+  padding: 10px 4px;
+}
+.referred-list {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0 2px;
+}
+.referred-head,
+.referred-row {
+  display: grid;
+  grid-template-columns: 1fr auto 90px;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 6px;
+}
+.referred-head {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  padding-bottom: 4px;
+}
+.referred-head span:nth-child(2),
+.referred-row .referred-date {
+  text-align: right;
+}
+.referred-head span:nth-child(3),
+.referred-row .status-pill {
+  justify-self: end;
+}
+.referred-row {
+  border-top: 0.5px solid var(--line);
+  font-family: var(--sans);
+  font-size: 13px;
+}
+.referred-who {
+  display: flex;
+  flex-direction: column;
+}
+.referred-name {
+  color: var(--text);
+}
+.referred-handle {
+  font-size: 11px;
+  color: var(--text-3);
+}
+.referred-date {
+  font-size: 12px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.status-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.status-pill.signed_up {
+  color: var(--text-3);
+  background: var(--surface);
+}
+.status-pill.trial {
+  color: var(--gold-light);
+  background: rgba(196, 145, 44, 0.12);
+}
+.status-pill.paid {
+  color: #34c759;
+  background: rgba(52, 199, 89, 0.12);
+}
+
 @media (max-width: 640px) {
   .form-grid {
     grid-template-columns: 1fr;
