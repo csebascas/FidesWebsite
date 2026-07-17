@@ -28,6 +28,26 @@
         </div>
       </div>
 
+      <!-- Benchmarks -->
+      <div class="section">
+        <h2 class="section-title">How we compare · industry reference</h2>
+        <div class="table-scroll">
+          <table class="bench">
+            <thead><tr><th>Metric</th><th class="num">Fides</th><th>Category</th><th>Best-in-class</th><th>Read</th></tr></thead>
+            <tbody>
+              <tr v-for="b in benchmarks" :key="b.metric">
+                <td>{{ b.metric }}<span v-if="b.note" class="bnote"> · {{ b.note }}</span></td>
+                <td class="num you">{{ b.you }}</td>
+                <td class="muted">{{ b.cat }}</td>
+                <td class="muted">{{ b.best }}</td>
+                <td><span class="vpill" :class="vClass(b.v)">{{ b.v }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="hint">Benchmarks are approximate figures from public reports (Duolingo disclosures, education/subscription retention studies) — directional context, not live competitor data.</p>
+      </div>
+
       <!-- Streak health -->
       <div class="section">
         <h2 class="section-title">Streak health · the retention spine</h2>
@@ -133,6 +153,36 @@ function pct(v: number): number {
   const total = funnel.value?.signed_up || 0
   return total ? Math.round((Number(v) / total) * 100) : 0
 }
+
+// Verdict against a category-median / best-in-class band.
+function verdict(v: number | null, mid: number, high: number): string {
+  if (v == null || Number.isNaN(v)) return 'small n'
+  if (v >= high) return 'Strong'
+  if (v >= mid) return 'On par'
+  return 'Below'
+}
+function vClass(v: string): string {
+  return v === 'Strong' ? 'good' : v === 'Below' ? 'bad' : 'mid'
+}
+
+// Industry reference bands (approximate, from public reports — Duolingo
+// disclosures, education/subscription app retention studies). Directional.
+const benchmarks = computed(() => {
+  const f = funnel.value, total = f.signed_up || 0
+  const streakOn = total ? Math.round(((total - Number(streaks.value.zero || 0)) / total) * 100) : 0
+  const ret = pct(f.returned_day2plus)
+  const proPct = pct(f.pro)
+  const trials = Number(churn.value.trials_started || 0)
+  const trialConv = trials ? Math.round((Number(churn.value.paid || 0) / trials) * 100) : null
+  const act = Number(activation.value.rate_pct ?? 0)
+  return [
+    { metric: 'Activation (2+ active days, wk1)', you: act + '%', cat: 'Learning apps ~25–35%', best: 'Duolingo ~45%', v: verdict(act, 30, 42) },
+    { metric: 'Early retention (return day 2+)', you: ret + '%', cat: 'Education ~25–30%', best: 'Duolingo ~50%', v: verdict(ret, 28, 45) },
+    { metric: 'On an active streak', you: streakOn + '%', cat: '—', best: 'Duolingo ~40%+', v: verdict(streakOn, 20, 40) },
+    { metric: 'Trial → paid', you: trialConv == null ? '—' : trialConv + '%', cat: 'Freemium ~30–50%', best: '>55%', v: trialConv == null ? 'small n' : verdict(trialConv, 30, 55) },
+    { metric: 'Free → Pro', you: proPct + '%', cat: 'Freemium ~2–5%', best: '—', note: 'inflated by referral/comp grants', v: 'context' },
+  ]
+})
 function distPct(v: number): number {
   const total = (streaks.value.dist || []).reduce((a: number, d: any) => a + Number(d.count), 0)
   return total ? Math.round((Number(v) / total) * 100) : 0
@@ -223,6 +273,18 @@ onMounted(async () => {
 .cohort td { padding: 9px 12px; border-bottom: 1px solid var(--line); color: var(--text-2); }
 .cohort td.cell { color: var(--text); border-radius: 4px; }
 .cohort td.future { color: var(--text-3); background: rgba(255,255,255,0.02) !important; }
+
+.bench { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 13px; }
+.bench th { background: var(--surface); color: var(--text-3); font-weight: 500; text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.bench th.num, .bench td.num { text-align: right; }
+.bench td { padding: 10px 12px; border-bottom: 1px solid var(--line); color: var(--text-2); }
+.bench td.you { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bench td.muted { color: var(--text-3); font-size: 12px; }
+.bnote { color: var(--text-3); font-size: 11px; }
+.vpill { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 100px; white-space: nowrap; }
+.vpill.good { color: #34c759; background: rgba(52,199,89,0.12); }
+.vpill.bad { color: #D4673A; background: rgba(212,103,58,0.14); }
+.vpill.mid { color: var(--gold-light); background: rgba(196,145,44,0.12); }
 
 @media (max-width: 640px) { .dash-grid { grid-template-columns: 1fr; } }
 </style>
