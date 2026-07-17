@@ -70,6 +70,7 @@ const NAV_TOP = [
   { to: '/d/health', label: 'Health', icon: `<path d="M1.5 7h2.5l1.5-3.5L8 10.5 9.5 7h3" ${STROKE} stroke-width="1.2"/>` },
   { to: '/d/reports', label: 'Reports', icon: `<path d="M2.5 11.5V8M7 11.5V5M11.5 11.5V2.5" ${STROKE} stroke-width="1.3"/>` },
   { to: '/d/creators', label: 'Creators', icon: `<circle cx="7" cy="4.4" r="2.3" ${STROKE} stroke-width="1.1"/><path d="M2.6 11.6a4.4 4.4 0 0 1 8.8 0" ${STROKE} stroke-width="1.1"/><path d="M11 2.2l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z" ${STROKE} stroke-width="0.9"/>` },
+  { to: '/d/creator-of-month', label: 'Creator of Month', icon: `<path d="M7 1.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L7 9.8 3.8 11.6l.6-3.6L1.8 5.4l3.6-.5z" ${STROKE} stroke-width="1.1"/>` },
 ]
 
 const NAV_CONTENT = [

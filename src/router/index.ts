@@ -84,6 +84,11 @@ const routes = [
         meta: { title: 'Creators — Fides Admin', requiresAuth: true },
       },
       {
+        path: 'creator-of-month',
+        component: () => import('../views/admin/AdminCreatorOfMonth.vue'),
+        meta: { title: 'Creator of the Month — Fides Admin', requiresAuth: true },
+      },
+      {
         path: 'content/:type',
         component: () => import('../views/admin/AdminContentList.vue'),
         meta: { title: 'Content — Fides Admin', requiresAuth: true },
