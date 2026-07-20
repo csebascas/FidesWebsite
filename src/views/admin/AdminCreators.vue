@@ -58,6 +58,7 @@
             <th class="num">Trials</th>
             <th class="num">Paid</th>
             <th class="num">Conv.</th>
+            <th>Linked user</th>
             <th></th>
           </tr>
         </thead>
@@ -82,6 +83,51 @@
               <td class="num">{{ num(row.trials) }}</td>
               <td class="num gold">{{ num(row.paid_conversions) }}</td>
               <td class="num">{{ row.pct_joined_pro != null ? row.pct_joined_pro + '%' : '—' }}</td>
+              <td class="link-cell">
+                <template v-if="linkingCode === row.code">
+                  <div class="link-edit">
+                    <input
+                      v-model="linkSearch"
+                      class="link-input"
+                      placeholder="Search name, @username, or UUID"
+                    />
+                    <button class="link-cancel" @click="cancelLink">Cancel</button>
+                  </div>
+                  <div v-if="linkSearch.trim()" class="link-results">
+                    <button
+                      v-for="u in linkMatches"
+                      :key="u.id"
+                      class="link-result"
+                      :disabled="linkSaving"
+                      @click="saveLink(row, u.id)"
+                    >
+                      <span class="lr-name">{{ u.display_name || 'Pilgrim' }}</span>
+                      <span v-if="u.username" class="lr-handle">@{{ u.username }}</span>
+                      <span class="lr-id">{{ shortId(u.id) }}</span>
+                    </button>
+                    <div v-if="linkMatches.length === 0" class="link-noresult">
+                      <span v-if="usersLoadingList">Loading users…</span>
+                      <template v-else>
+                        No match.
+                        <button
+                          v-if="isUuid(linkSearch)"
+                          class="link-uuid-btn"
+                          :disabled="linkSaving"
+                          @click="saveLink(row, linkSearch.trim())"
+                        >Link this UUID</button>
+                      </template>
+                    </div>
+                  </div>
+                  <span v-if="linkError" class="link-error">{{ linkError }}</span>
+                </template>
+                <template v-else-if="row.linked_user_id">
+                  <button class="linked-user" @click="startLink(row)" title="Click to change the linked user">
+                    {{ row.linked_display_name || (row.linked_username ? '@' + row.linked_username : shortId(row.linked_user_id)) }}
+                  </button>
+                  <button class="link-unlink" @click="unlink(row)" title="Unlink">✕</button>
+                </template>
+                <button v-else class="link-btn" @click="startLink(row)">Link user</button>
+              </td>
               <td>
                 <button class="status-btn" :class="{ on: row.active }" @click="toggleActive(row)">
                   {{ row.active ? 'Active' : 'Paused' }}
@@ -89,7 +135,55 @@
               </td>
             </tr>
             <tr v-if="expanded === row.code" class="detail-row">
-              <td colspan="8">
+              <td colspan="9">
+                <div class="detail-link">
+                  <span class="dl-label">Linked creator account</span>
+                  <template v-if="linkingCode === row.code">
+                    <div class="link-edit">
+                      <input
+                        v-model="linkSearch"
+                        class="link-input wide"
+                        placeholder="Search name, @username, or UUID"
+                      />
+                      <button class="link-cancel" @click="cancelLink">Cancel</button>
+                    </div>
+                    <div v-if="linkSearch.trim()" class="link-results">
+                      <button
+                        v-for="u in linkMatches"
+                        :key="u.id"
+                        class="link-result"
+                        :disabled="linkSaving"
+                        @click="saveLink(row, u.id)"
+                      >
+                        <span class="lr-name">{{ u.display_name || 'Pilgrim' }}</span>
+                        <span v-if="u.username" class="lr-handle">@{{ u.username }}</span>
+                        <span class="lr-id">{{ shortId(u.id) }}</span>
+                      </button>
+                      <div v-if="linkMatches.length === 0" class="link-noresult">
+                        <span v-if="usersLoadingList">Loading users…</span>
+                        <template v-else>
+                          No match.
+                          <button
+                            v-if="isUuid(linkSearch)"
+                            class="link-uuid-btn"
+                            :disabled="linkSaving"
+                            @click="saveLink(row, linkSearch.trim())"
+                          >Link this UUID</button>
+                        </template>
+                      </div>
+                    </div>
+                    <span v-if="linkError" class="link-error">{{ linkError }}</span>
+                  </template>
+                  <template v-else-if="row.linked_user_id">
+                    <span class="dl-linked">{{ row.linked_display_name || (row.linked_username ? '@' + row.linked_username : shortId(row.linked_user_id)) }}</span>
+                    <button class="link-btn" @click="startLink(row)">Change</button>
+                    <button class="link-unlink" @click="unlink(row)">Unlink</button>
+                  </template>
+                  <template v-else>
+                    <span class="dl-none">Not linked</span>
+                    <button class="link-btn" @click="startLink(row)">Link a user</button>
+                  </template>
+                </div>
                 <div v-if="usersLoading === row.code" class="detail-note">Loading…</div>
                 <div v-else-if="(usersByCode[row.code] || []).length === 0" class="detail-note">No signups yet for this code.</div>
                 <div v-else class="referred-list">
@@ -109,7 +203,7 @@
             </tr>
           </template>
           <tr v-if="!loading && rows.length === 0">
-            <td colspan="8" class="empty">No creator codes yet. Create one above.</td>
+            <td colspan="9" class="empty">No creator codes yet. Create one above.</td>
           </tr>
         </tbody>
       </table>
@@ -134,6 +228,107 @@ const newDays = ref('')
 const creating = ref(false)
 const formError = ref('')
 const copied = ref('')
+
+// Link-to-user editing: search users by name / @username / id, or paste a UUID.
+const linkingCode = ref<string | null>(null)
+const linkSearch = ref('')
+const linkError = ref('')
+const linkSaving = ref(false)
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// User directory for the search, loaded once on first link. Same select the
+// Users tab uses, so the admin searches over the real accounts.
+const linkUsers = ref<any[]>([])
+const linkUsersLoaded = ref(false)
+const usersLoadingList = ref(false)
+
+function shortId(id: string): string {
+  return id ? id.slice(0, 8) + '…' : '—'
+}
+
+function isUuid(s: string): boolean {
+  return UUID_RE.test((s || '').trim())
+}
+
+async function loadLinkUsers() {
+  if (linkUsersLoaded.value || usersLoadingList.value) return
+  usersLoadingList.value = true
+  const { data } = await adminRpc({
+    action: 'select',
+    table: 'users',
+    select: 'id, username, display_name',
+    order: { column: 'created_at', ascending: false },
+    limit: 5000,
+  })
+  linkUsers.value = data || []
+  linkUsersLoaded.value = true
+  usersLoadingList.value = false
+}
+
+const linkMatches = computed(() => {
+  const q = linkSearch.value.trim().toLowerCase()
+  if (!q) return []
+  return linkUsers.value
+    .filter(
+      (u) =>
+        (u.display_name || '').toLowerCase().includes(q) ||
+        (u.username || '').toLowerCase().includes(q) ||
+        (u.id || '').toLowerCase().includes(q),
+    )
+    .slice(0, 8)
+})
+
+function startLink(row: any) {
+  linkError.value = ''
+  linkSearch.value = ''
+  linkingCode.value = row.code
+  void loadLinkUsers()
+}
+
+function cancelLink() {
+  linkingCode.value = null
+  linkSearch.value = ''
+  linkError.value = ''
+}
+
+async function saveLink(row: any, userId: string) {
+  linkError.value = ''
+  const id = (userId || '').trim()
+  if (!UUID_RE.test(id)) {
+    linkError.value = 'Pick a user from the list, or paste a valid UUID.'
+    return
+  }
+  linkSaving.value = true
+  const { error } = await adminRpc({
+    action: 'update',
+    table: 'partner_codes',
+    match: { code: row.code },
+    data: { linked_user_id: id },
+  })
+  linkSaving.value = false
+  if (error) {
+    linkError.value = /duplicate|unique/i.test(error)
+      ? 'That user is already linked to another code.'
+      : error
+    return
+  }
+  cancelLink()
+  await load() // refresh so the linked user's name shows
+}
+
+async function unlink(row: any) {
+  const { error } = await adminRpc({
+    action: 'update',
+    table: 'partner_codes',
+    match: { code: row.code },
+    data: { linked_user_id: null },
+  })
+  if (!error) {
+    row.linked_user_id = null
+    row.linked_username = null
+    row.linked_display_name = null
+  }
+}
 
 // Drill-down: which creator is expanded, and the per-user list per code.
 const expanded = ref<string | null>(null)
@@ -499,6 +694,189 @@ tr.paused {
 .status-btn.on {
   color: #34c759;
   border-color: rgba(52, 199, 89, 0.4);
+}
+
+/* ── Link-to-user ── */
+.link-cell {
+  white-space: nowrap;
+}
+.link-btn {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--gold-light);
+  background: none;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+.link-btn:hover {
+  border-color: var(--gold);
+}
+.linked-user {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--text);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.linked-user:hover {
+  color: var(--gold-light);
+}
+.link-unlink {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: 6px;
+}
+.link-unlink:hover {
+  color: #ff6b5e;
+}
+.link-edit {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.link-input {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text);
+  background: var(--bg, #0c0c0c);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 7px;
+  outline: none;
+  width: 150px;
+}
+.link-input:focus {
+  border-color: var(--gold);
+}
+.link-save {
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: #0c0c0c;
+  background: var(--gold);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+.link-save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.link-cancel {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.link-error {
+  display: block;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  color: #ff6b5e;
+  margin-top: 3px;
+}
+.link-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  max-width: 220px;
+}
+.link-result {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text);
+  background: var(--bg, #0c0c0c);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 5px 8px;
+  cursor: pointer;
+  text-align: left;
+}
+.link-result:hover {
+  border-color: var(--gold);
+}
+.link-result:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.lr-name {
+  font-weight: 600;
+}
+.lr-handle {
+  color: var(--gold);
+  font-size: 10.5px;
+}
+.lr-id {
+  margin-left: auto;
+  color: var(--text-3);
+  font-size: 10px;
+  font-family: var(--mono, monospace);
+}
+.link-noresult {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  color: var(--text-3);
+  padding: 3px 2px;
+}
+.link-uuid-btn {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--gold);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+}
+.detail-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 2px 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.dl-label {
+  font-family: var(--sans);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.dl-linked {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+}
+.dl-none {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--text-3);
+}
+.link-input.wide {
+  width: 240px;
+  max-width: 60vw;
 }
 
 /* ── Drill-down: who got referred ── */
