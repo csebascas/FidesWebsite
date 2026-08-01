@@ -25,6 +25,7 @@ const ALLOWED_TABLES = [
   'user_saint_unlocks', 'user_badges', 'league_entries',
   'partner_codes', 'partner_attributions', 'partner_referral_stats',
   'partner_referral_users', 'partner_of_month',
+  'paintings', 'painting_regions',
 ];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {

@@ -104,6 +104,11 @@ const routes = [
         meta: { title: 'Edit Content — Fides Admin', requiresAuth: true },
       },
       {
+        path: 'visio',
+        component: () => import('../views/admin/AdminVisio.vue'),
+        meta: { title: 'Visio Rooms — Fides Admin', requiresAuth: true },
+      },
+      {
         path: 'downloads',
         component: () => import('../views/admin/AdminDownloads.vue'),
         meta: { title: 'Downloads — Fides Admin', requiresAuth: true },

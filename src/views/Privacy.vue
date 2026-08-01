@@ -10,7 +10,7 @@ import { RouterLink } from 'vue-router'
 
   <article class="legal">
     <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: April 13, 2026</p>
+    <p class="updated">Last updated: July 25, 2026</p>
 
     <p>
       Fides ("we," "our," or "us") is committed to protecting your privacy.
@@ -39,6 +39,28 @@ import { RouterLink } from 'vue-router'
       for advertising.
     </p>
     <p>
+      <strong>AI debate content (Disputatio).</strong> Disputatio is an
+      AI-powered feature where you practice apologetics by debating an AI
+      "skeptic." When you take part in a round, the arguments you type or speak
+      are sent to our AI providers to generate the skeptic's replies and to score
+      your performance. We store a summary of each completed debate in your
+      account — the topic, the persona you faced, the outcome, notes on the
+      strongest and weakest points of your argument, and the resulting rating
+      change — so you can review your history. We do not store the full
+      turn-by-turn text of your arguments on our servers.
+    </p>
+    <p>
+      <strong>Voice input.</strong> Disputatio lets you speak your arguments
+      instead of typing. Your speech is converted to text by your device's
+      built-in speech recognition (provided by Apple on iOS or Google on
+      Android). Depending on your device and its settings, this transcription may
+      happen entirely on your device or be processed by Apple or Google under
+      their own privacy policies. Only the resulting text — not your raw audio —
+      is sent to our servers. When you have voice replies enabled, the AI
+      skeptic's reply text is sent to OpenAI to generate the spoken audio you
+      hear.
+    </p>
+    <p>
       <strong>Device information.</strong> We collect device type, operating
       system version, app version, and push notification tokens to deliver
       notifications you have opted into.
@@ -59,6 +81,7 @@ import { RouterLink } from 'vue-router'
     <ul>
       <li>To provide and maintain the App and your learning progress</li>
       <li>To schedule reviews and personalize your lesson queue</li>
+      <li>To operate AI-powered features such as Disputatio — generating debate responses, converting speech to text and text to speech, and scoring your arguments</li>
       <li>To send push notifications you have opted into (streak reminders, review alerts)</li>
       <li>To process subscriptions and payments (handled by Apple and Google; we do not store payment information)</li>
       <li>To diagnose crashes and improve App stability via Firebase Crashlytics</li>
@@ -91,11 +114,20 @@ import { RouterLink } from 'vue-router'
     <p>We share data with the following third-party processors:</p>
     <ul>
       <li><strong>Supabase</strong> (AWS US regions) — database, authentication, backend infrastructure, and edge functions</li>
+      <li><strong>Anthropic</strong> (Claude) — AI processing for the Disputatio debate feature. The argument text you submit during a round is sent to Anthropic to generate the skeptic's replies and score your performance</li>
+      <li><strong>OpenAI</strong> — text-to-speech, and where applicable speech-to-text, for Disputatio voice mode</li>
+      <li><strong>Apple / Google</strong> — on-device or platform speech recognition when you use voice input, subject to their respective privacy policies</li>
       <li><strong>Google Firebase</strong> — Crashlytics for crash reporting and diagnostics</li>
       <li><strong>Superwall</strong> — paywall presentation and subscription event tracking</li>
       <li><strong>Apple App Store / Google Play Store</strong> — payment processing for subscriptions. We receive confirmation of purchase status but never see or store your payment details</li>
       <li><strong>Expo (EAS)</strong> — push notification delivery via Expo Push Service</li>
     </ul>
+    <p>
+      Our AI providers (Anthropic and OpenAI) process the content you submit
+      only to return a response to you. Under our agreements with them, this
+      content is not used to train their models. They may retain it transiently
+      for abuse monitoring in accordance with their own policies.
+    </p>
     <p>
       We do not sell, rent, or trade your personal information to any third
       party. We do not use your data for advertising. We do not participate in
@@ -119,6 +151,13 @@ import { RouterLink } from 'vue-router'
       total lesson completions) may be retained indefinitely. We may retain
       certain data longer where required by law (e.g., transaction records for
       tax purposes).
+    </p>
+    <p>
+      Debate summaries from Disputatio are retained with your account and are
+      deleted when you delete your account. Content sent to our AI providers to
+      generate a response is retained only transiently by those providers under
+      their own retention policies; we do not keep a copy of the raw arguments
+      you submit.
     </p>
 
     <h2>8. Your Rights</h2>

@@ -88,6 +88,7 @@ const NAV_CONTENT = [
   { to: '/d/content/saints', label: 'Saints', icon: `<circle cx="7" cy="8.4" r="3.1" ${STROKE} stroke-width="1.1"/><path d="M3.6 3.2a5.4 5.4 0 0 1 6.8 0" ${STROKE} stroke-width="1.1"/>` },
   { to: '/d/content/tracks', label: 'Tracks', icon: `<circle cx="3.2" cy="3.2" r="1.6" ${STROKE} stroke-width="1.1"/><circle cx="10.8" cy="10.8" r="1.6" ${STROKE} stroke-width="1.1"/><path d="M4.4 4.4c2.2 2.2 3 3 6.4 3.2M4 10.8h4.2" ${STROKE} stroke-width="1.1"/>` },
   { to: '/d/content/pillars', label: 'Pillars', icon: `<path d="M2.5 12V5.5M7 12V5.5M11.5 12V5.5M1.5 12.5h11M1.8 5l5.2-3 5.2 3z" ${STROKE} stroke-width="1.1"/>` },
+  { to: '/d/visio', label: 'Visio Rooms', icon: `<rect x="1.8" y="2.4" width="10.4" height="9.2" rx="1" ${STROKE} stroke-width="1.1"/><circle cx="5" cy="6" r="1.3" ${STROKE} stroke-width="1.1"/><path d="M2.2 10.4 5.4 7.6l2 1.8 2.3-2.6 2 2.2" ${STROKE} stroke-width="1.1"/>` },
 ]
 
 const NAV_OPS = [

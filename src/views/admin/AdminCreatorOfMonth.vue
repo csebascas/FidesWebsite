@@ -48,17 +48,17 @@
             <input v-model="form.name" placeholder="Creator's name" />
           </div>
           <div class="fld">
-            <label>Role <span class="req">*</span></label>
+            <label>Role <span class="opt">(optional)</span></label>
             <input v-model="form.role" placeholder="e.g. Catholic content creator" />
           </div>
         </div>
 
         <div class="fld">
-          <label>Tagline <span class="req">*</span></label>
+          <label>Tagline <span class="opt">(optional)</span></label>
           <input v-model="form.tagline" placeholder="One line under the name" />
         </div>
         <div class="fld">
-          <label>Subheading <span class="req">*</span></label>
+          <label>Subheading <span class="opt">(optional)</span></label>
           <input v-model="form.subheading" placeholder="Short intro above the story" />
         </div>
 
@@ -203,10 +203,10 @@ function selectById(id: string) {
 
 async function save() {
   error.value = ''
-  const req = ['month', 'name', 'role', 'tagline', 'subheading', 'portrait_url', 'body_md', 'why_partnered_md']
+  const req = ['month', 'name', 'portrait_url', 'body_md', 'why_partnered_md']
   for (const k of req) {
     if (!String(form[k] ?? '').trim()) {
-      error.value = 'Fill in every required field (month, name, role, tagline, subheading, portrait URL, story, and why-partnered).'
+      error.value = 'Fill in every required field (month, name, portrait URL, story, and why-partnered).'
       return
     }
   }
@@ -217,9 +217,9 @@ async function save() {
   const payload = {
     month: form.month,
     name: form.name.trim(),
-    role: form.role.trim(),
-    tagline: form.tagline.trim(),
-    subheading: form.subheading.trim(),
+    role: form.role.trim() || null,
+    tagline: form.tagline.trim() || null,
+    subheading: form.subheading.trim() || null,
     portrait_url: form.portrait_url.trim(),
     quote: form.quote.trim() || null,
     body_md: form.body_md,

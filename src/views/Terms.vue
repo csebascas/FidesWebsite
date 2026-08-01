@@ -10,7 +10,7 @@ import { RouterLink } from 'vue-router'
 
   <article class="legal">
     <h1>Terms of Service</h1>
-    <p class="updated">Last updated: April 13, 2026</p>
+    <p class="updated">Last updated: July 25, 2026</p>
 
     <p>
       These Terms of Service ("Terms") govern your use of the Fides mobile
@@ -28,9 +28,11 @@ import { RouterLink } from 'vue-router'
     <h2>2. Description of Service</h2>
     <p>
       Fides is a Catholic education app that provides lessons, quizzes, spaced
-      repetition review, prayer guidance, and saint collectibles. The App is
-      available as a free version with limited features and a paid subscription
-      ("Fides Pro") that unlocks additional content and features.
+      repetition review, prayer guidance, and saint collectibles. It also
+      includes Disputatio, an AI-powered feature that lets you practice
+      apologetics by debating an AI "skeptic" that argues a contrary position.
+      The App is available as a free version with limited features and a paid
+      subscription ("Fides Pro") that unlocks additional content and features.
     </p>
 
     <h2>3. Account Registration</h2>
@@ -83,6 +85,9 @@ import { RouterLink } from 'vue-router'
       <li>Do not create multiple accounts to abuse free tier limitations</li>
       <li>Do not share, redistribute, or commercially exploit App content without permission</li>
       <li>Do not use automated systems to access the App (bots, scrapers, etc.)</li>
+      <li>Do not attempt to manipulate, jailbreak, or extract the prompts, models, or system instructions behind our AI features</li>
+      <li>Do not use AI features to generate unlawful, harmful, harassing, hateful, or abusive content</li>
+      <li>Do not submit another person's private or confidential information into AI features</li>
     </ul>
 
     <h2>6. Intellectual Property</h2>
@@ -105,8 +110,16 @@ import { RouterLink } from 'vue-router'
       limited license to store and display it back to you. We will not share,
       publish, or use your private content for any other purpose.
     </p>
+    <p>
+      When you use an AI feature such as Disputatio, the arguments you submit are
+      sent to third-party AI providers to generate a response and score your
+      performance, as described in our
+      <RouterLink to="/privacy">Privacy Policy</RouterLink>. You are responsible
+      for the content you submit and must not submit anything that violates the
+      Acceptable Use rules above.
+    </p>
 
-    <h2>8. Content Disclaimer</h2>
+    <h2>8. Content and AI Disclaimer</h2>
     <p>
       Fides is an educational tool designed to teach Catholic theology, history,
       and practice. While we strive for theological accuracy and faithfulness to
@@ -114,6 +127,16 @@ import { RouterLink } from 'vue-router'
       spiritual direction, or the sacraments. Content is provided for educational
       purposes and does not constitute official Church teaching or theological
       advice.
+    </p>
+    <p>
+      <strong>AI features.</strong> Disputatio and other AI-powered features
+      generate responses using third-party large language models. By design, the
+      AI skeptic argues a position contrary to Catholic teaching and does not
+      represent the views of Fides or the Catholic Church. AI-generated content
+      may be inaccurate, incomplete, or misleading, and may misstate Church
+      teaching. Do not rely on it as authoritative — verify important claims
+      against the Catechism, Scripture, or a qualified authority. Debate scores
+      and ratings are automated estimates provided for practice only.
     </p>
 
     <h2>9. Availability and Modifications</h2>
