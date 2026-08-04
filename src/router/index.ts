@@ -84,6 +84,11 @@ const routes = [
         meta: { title: 'Growth — Fides Admin', requiresAuth: true },
       },
       {
+        path: 'referrals',
+        component: () => import('../views/admin/AdminReferrals.vue'),
+        meta: { title: 'Referrals — Fides Admin', requiresAuth: true },
+      },
+      {
         path: 'creators',
         component: () => import('../views/admin/AdminCreators.vue'),
         meta: { title: 'Creators — Fides Admin', requiresAuth: true },

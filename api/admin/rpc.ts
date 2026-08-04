@@ -24,7 +24,7 @@ const ALLOWED_TABLES = [
   'topic_requests', 'user_lesson_progress', 'user_track_progress',
   'user_saint_unlocks', 'user_badges', 'league_entries',
   'partner_codes', 'partner_attributions', 'partner_referral_stats',
-  'partner_referral_users', 'partner_of_month',
+  'partner_referral_users', 'partner_of_month', 'partner_monthly_content',
   'paintings', 'painting_regions',
 ];
 

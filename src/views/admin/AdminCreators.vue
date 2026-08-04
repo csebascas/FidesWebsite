@@ -129,13 +129,56 @@
                 <button v-else class="link-btn" @click="startLink(row)">Link user</button>
               </td>
               <td>
-                <button class="status-btn" :class="{ on: row.active }" @click="toggleActive(row)">
-                  {{ row.active ? 'Active' : 'Paused' }}
-                </button>
+                <div class="row-actions">
+                  <button class="edit-btn" @click="startEdit(row)">Edit</button>
+                  <button class="status-btn" :class="{ on: row.active }" @click="toggleActive(row)">
+                    {{ row.active ? 'Active' : 'Paused' }}
+                  </button>
+                </div>
               </td>
             </tr>
+
+            <!-- Inline edit panel -->
+            <tr v-if="editingCode === row.code" class="detail-row">
+              <td colspan="9">
+                <div class="edit-panel">
+                  <div class="edit-head">
+                    <span class="edit-title">Edit creator</span>
+                    <code class="code">{{ row.code }}</code>
+                    <span class="edit-hint">Code can’t be changed — it’s in existing referral links and attributions.</span>
+                  </div>
+                  <div class="edit-grid">
+                    <div class="input-row">
+                      <label>Creator name</label>
+                      <input v-model="editForm.creator_name" placeholder="Creator's name" />
+                    </div>
+                    <div class="input-row">
+                      <label>Handle</label>
+                      <input v-model="editForm.creator_handle" placeholder="@handle (optional)" />
+                    </div>
+                    <div class="input-row">
+                      <label>Avatar URL</label>
+                      <input v-model="editForm.avatar_url" placeholder="https://…" />
+                    </div>
+                    <div class="input-row">
+                      <label>Pro days <span class="opt">(blank = default)</span></label>
+                      <input v-model="editForm.pro_days" placeholder="default" inputmode="numeric" />
+                    </div>
+                  </div>
+                  <div class="edit-foot">
+                    <span class="form-error" v-if="editError">{{ editError }}</span>
+                    <span class="edit-ok" v-if="editSaved">Saved.</span>
+                    <button class="link-cancel" @click="cancelEdit">Cancel</button>
+                    <button class="create-btn" :disabled="editSaving" @click="saveEdit(row)">{{ editSaving ? 'Saving…' : 'Save changes' }}</button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Expanded detail: linked user + referred list + monthly tracker -->
             <tr v-if="expanded === row.code" class="detail-row">
               <td colspan="9">
+                <!-- Linked user -->
                 <div class="detail-link">
                   <span class="dl-label">Linked creator account</span>
                   <template v-if="linkingCode === row.code">
@@ -184,6 +227,90 @@
                     <button class="link-btn" @click="startLink(row)">Link a user</button>
                   </template>
                 </div>
+
+                <!-- Monthly tracker -->
+                <div class="tracker">
+                  <div class="tracker-head">
+                    <span class="dl-label">Monthly content tracker</span>
+                    <span class="tracker-sub">Posts &amp; stories about us, per month</span>
+                  </div>
+                  <div v-if="trackerLoading === row.code" class="detail-note">Loading…</div>
+                  <template v-else>
+                    <table v-if="(trackerByCode[row.code] || []).length" class="tracker-table">
+                      <thead>
+                        <tr>
+                          <th>Month</th>
+                          <th class="num">Posts</th>
+                          <th class="num">Stories</th>
+                          <th>Notes</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="m in trackerByCode[row.code]" :key="m.id || m.month">
+                          <td>
+                            <input
+                              v-model="m.month"
+                              type="month"
+                              class="tracker-input month"
+                              @change="touchTracker(row.code, m)"
+                            />
+                          </td>
+                          <td class="num">
+                            <input
+                              v-model.number="m.posts"
+                              type="number"
+                              min="0"
+                              class="tracker-input num"
+                              @change="touchTracker(row.code, m)"
+                            />
+                          </td>
+                          <td class="num">
+                            <input
+                              v-model.number="m.stories"
+                              type="number"
+                              min="0"
+                              class="tracker-input num"
+                              @change="touchTracker(row.code, m)"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              v-model="m.notes"
+                              class="tracker-input notes"
+                              placeholder="—"
+                              @change="touchTracker(row.code, m)"
+                            />
+                          </td>
+                          <td>
+                            <button class="tracker-del" @click="deleteTracker(row.code, m)" :disabled="trackerSaving === m.id + '-' + m.month" title="Delete">✕</button>
+                          </td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <td>Total</td>
+                          <td class="num">{{ trackerTotals(row.code).posts }}</td>
+                          <td class="num">{{ trackerTotals(row.code).stories }}</td>
+                          <td></td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                    <div v-else class="detail-note">No months logged yet.</div>
+                    <div class="tracker-foot">
+                      <button class="tracker-add" @click="addTrackerMonth(row.code)">+ Add month</button>
+                      <button
+                        v-if="trackerDirty[row.code]"
+                        class="create-btn sm"
+                        :disabled="trackerSaving === row.code"
+                        @click="saveTrackers(row.code)"
+                      >{{ trackerSaving === row.code ? 'Saving…' : 'Save tracker' }}</button>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Referred users -->
                 <div v-if="usersLoading === row.code" class="detail-note">Loading…</div>
                 <div v-else-if="(usersByCode[row.code] || []).length === 0" class="detail-note">No signups yet for this code.</div>
                 <div v-else class="referred-list">
@@ -212,7 +339,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { adminRpc } from '../../lib/supabase'
 
 const LINK_BASE = 'https://joinfides.com/i/'
@@ -228,6 +355,80 @@ const newDays = ref('')
 const creating = ref(false)
 const formError = ref('')
 const copied = ref('')
+
+// ── Inline edit ──────────────────────────────────────────────────────────────
+const editingCode = ref<string | null>(null)
+const editForm = reactive<any>({
+  creator_name: '',
+  creator_handle: '',
+  avatar_url: '',
+  pro_days: '',
+})
+const editSaving = ref(false)
+const editError = ref('')
+const editSaved = ref(false)
+
+function startEdit(row: any) {
+  // Collapse the expand panel if open — the edit panel replaces it visually.
+  expanded.value = null
+  editingCode.value = row.code
+  editError.value = ''
+  editSaved.value = false
+  editForm.creator_name = row.creator_name || ''
+  editForm.creator_handle = row.creator_handle || ''
+  editForm.avatar_url = row.avatar_url || ''
+  editForm.pro_days = row.pro_days != null ? String(row.pro_days) : ''
+}
+
+function cancelEdit() {
+  editingCode.value = null
+}
+
+async function saveEdit(row: any) {
+  editError.value = ''
+  editSaved.value = false
+  const name = editForm.creator_name.trim()
+  if (!name) {
+    editError.value = 'Creator name is required.'
+    return
+  }
+  let days: number | null = null
+  if (editForm.pro_days.trim()) {
+    const d = parseInt(editForm.pro_days, 10)
+    if (!Number.isFinite(d) || d <= 0) {
+      editError.value = 'Pro days must be a positive number (or blank for default).'
+      return
+    }
+    days = d
+  }
+  const handle = editForm.creator_handle.trim() || null
+  const avatar = editForm.avatar_url.trim() || null
+  editSaving.value = true
+  const { error } = await adminRpc({
+    action: 'update',
+    table: 'partner_codes',
+    match: { code: row.code },
+    data: {
+      creator_name: name,
+      creator_handle: handle,
+      avatar_url: avatar,
+      pro_days: days,
+    },
+  })
+  editSaving.value = false
+  if (error) {
+    editError.value = error
+    return
+  }
+  // Reflect locally
+  row.creator_name = name
+  row.creator_handle = handle
+  row.avatar_url = avatar
+  row.pro_days = days
+  editSaved.value = true
+  setTimeout(() => { editSaved.value = false }, 2000)
+  setTimeout(() => { editingCode.value = null }, 800)
+}
 
 // Link-to-user editing: search users by name / @username / id, or paste a UUID.
 const linkingCode = ref<string | null>(null)
@@ -336,6 +537,8 @@ const usersByCode = ref<Record<string, any[]>>({})
 const usersLoading = ref<string | null>(null)
 
 async function toggleExpand(code: string) {
+  // Collapse the inline edit panel if it's open — expand replaces it.
+  editingCode.value = null
   if (expanded.value === code) { expanded.value = null; return }
   expanded.value = code
   if (!usersByCode.value[code]) {
@@ -349,6 +552,10 @@ async function toggleExpand(code: string) {
     })
     usersByCode.value = { ...usersByCode.value, [code]: data ?? [] }
     usersLoading.value = null
+  }
+  // Load the monthly tracker if not already loaded.
+  if (!trackerByCode.value[code]) {
+    await loadTrackers(code)
   }
 }
 
@@ -458,6 +665,155 @@ async function copyLink(code: string) {
   } catch {
     /* clipboard unavailable */
   }
+}
+
+// ── Monthly tracker ──────────────────────────────────────────────────────────
+// Each creator (code) has a list of {id?, month, posts, stories, notes} rows.
+// New (unsaved) rows have id = null. `dirty` tracks which codes have unsaved
+// changes so the Save button only shows when needed.
+
+interface TrackerRow {
+  id: string | null
+  month: string
+  posts: number
+  stories: number
+  notes: string | null
+  _dirty?: boolean
+  _deleted?: boolean
+}
+
+const trackerByCode = ref<Record<string, TrackerRow[]>>({})
+const trackerLoading = ref<string | null>(null)
+const trackerDirty = ref<Record<string, boolean>>({})
+const trackerSaving = ref<string | null>(null) // holds "code" or "id-month"
+
+function currentMonth(): string {
+  return new Date().toISOString().slice(0, 7) // YYYY-MM
+}
+
+async function loadTrackers(code: string) {
+  trackerLoading.value = code
+  const { data } = await adminRpc({
+    action: 'select',
+    table: 'partner_monthly_content',
+    match: { code },
+    order: { column: 'month', ascending: false },
+    limit: 200,
+  })
+  trackerByCode.value = {
+    ...trackerByCode.value,
+    [code]: (data ?? []).map((r: any) => ({
+      id: r.id,
+      month: r.month,
+      posts: r.posts ?? 0,
+      stories: r.stories ?? 0,
+      notes: r.notes ?? null,
+    })),
+  }
+  trackerLoading.value = null
+}
+
+function addTrackerMonth(code: string) {
+  const list = trackerByCode.value[code] || []
+  // Default to the current month, but skip it if already present.
+  const m = currentMonth()
+  if (!list.some((r) => r.month === m && !r._deleted)) {
+    list.push({ id: null, month: m, posts: 0, stories: 0, notes: null, _dirty: true })
+    trackerByCode.value = { ...trackerByCode.value, [code]: list }
+  }
+  trackerDirty.value = { ...trackerDirty.value, [code]: true }
+}
+
+function touchTracker(code: string, row: TrackerRow) {
+  row._dirty = true
+  trackerDirty.value = { ...trackerDirty.value, [code]: true }
+}
+
+async function deleteTracker(code: string, row: TrackerRow) {
+  const key = (row.id || 'new') + '-' + row.month
+  trackerSaving.value = key
+  if (row.id) {
+    await adminRpc({
+      action: 'delete',
+      table: 'partner_monthly_content',
+      id: row.id,
+    })
+  }
+  const list = (trackerByCode.value[code] || []).filter(
+    (r) => r !== row,
+  )
+  trackerByCode.value = { ...trackerByCode.value, [code]: list }
+  trackerSaving.value = null
+}
+
+async function saveTrackers(code: string) {
+  trackerSaving.value = code
+  const list = trackerByCode.value[code] || []
+  for (const row of list) {
+    if (!row._dirty) continue
+    // Validate
+    if (!/^\d{4}-\d{2}$/.test(row.month)) continue
+    const posts = Math.max(0, Number(row.posts) || 0)
+    const stories = Math.max(0, Number(row.stories) || 0)
+    const payload = {
+      code,
+      month: row.month,
+      posts,
+      stories,
+      notes: (row.notes || '').trim() || null,
+    }
+    if (row.id) {
+      // Update existing
+      const { error } = await adminRpc({
+        action: 'update',
+        table: 'partner_monthly_content',
+        id: row.id,
+        data: { posts, stories, notes: payload.notes },
+      })
+      if (error) { trackerSaving.value = null; return }
+    } else {
+      // Insert — check for (code, month) collision first.
+      const { data: existing } = await adminRpc({
+        action: 'select',
+        table: 'partner_monthly_content',
+        match: { code, month: row.month },
+        limit: 1,
+      })
+      if (existing && existing.length) {
+        // Month already exists for this code — update it instead.
+        const existingId = existing[0].id
+        const { error } = await adminRpc({
+          action: 'update',
+          table: 'partner_monthly_content',
+          id: existingId,
+          data: { posts, stories, notes: payload.notes },
+        })
+        if (error) { trackerSaving.value = null; return }
+        row.id = existingId
+      } else {
+        const { data, error } = await adminRpc({
+          action: 'insert',
+          table: 'partner_monthly_content',
+          data: payload,
+        })
+        if (error) { trackerSaving.value = null; return }
+        if (data?.id) row.id = data.id
+      }
+    }
+    row._dirty = false
+  }
+  trackerSaving.value = null
+  trackerDirty.value = { ...trackerDirty.value, [code]: false }
+}
+
+function trackerTotals(code: string): { posts: number; stories: number } {
+  return (trackerByCode.value[code] || []).reduce(
+    (a, r) => ({
+      posts: a.posts + (Number(r.posts) || 0),
+      stories: a.stories + (Number(r.stories) || 0),
+    }),
+    { posts: 0, stories: 0 },
+  )
 }
 
 onMounted(load)
@@ -598,6 +954,10 @@ onMounted(load)
   opacity: 0.5;
   cursor: default;
 }
+.create-btn.sm {
+  font-size: 12px;
+  padding: 6px 14px;
+}
 .hint {
   font-family: var(--sans);
   font-size: 11.5px;
@@ -694,6 +1054,72 @@ tr.paused {
 .status-btn.on {
   color: #34c759;
   border-color: rgba(52, 199, 89, 0.4);
+}
+
+/* ── Row actions (Edit + status) ── */
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.edit-btn {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--gold-light);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.edit-btn:hover {
+  border-color: var(--gold);
+}
+
+/* ── Inline edit panel ── */
+.edit-panel {
+  padding: 4px 2px 6px;
+}
+.edit-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.edit-title {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.edit-hint {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.edit-grid .input-row input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.edit-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.edit-ok {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: #34c759;
+  margin-right: auto;
 }
 
 /* ── Link-to-user ── */
@@ -879,6 +1305,118 @@ tr.paused {
   max-width: 60vw;
 }
 
+/* ── Monthly tracker ── */
+.tracker {
+  padding: 4px 2px 14px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.tracker-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.tracker-sub {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-3);
+}
+.tracker-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--sans);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.tracker-table th {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+  font-weight: 500;
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.tracker-table th.num {
+  text-align: right;
+}
+.tracker-table td {
+  padding: 5px 8px;
+  border-bottom: 0.5px solid var(--line);
+  color: var(--text-2);
+}
+.tracker-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tracker-table tfoot td {
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: none;
+  border-top: 1px solid var(--line);
+}
+.tracker-input {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg, #0c0c0c);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 7px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.tracker-input:focus {
+  border-color: var(--gold);
+}
+.tracker-input.num {
+  width: 64px;
+  text-align: right;
+}
+.tracker-input.month {
+  width: 130px;
+}
+.tracker-input.notes {
+  min-width: 140px;
+}
+.tracker-del {
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.tracker-del:hover {
+  color: #ff6b5e;
+}
+.tracker-del:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.tracker-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.tracker-add {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--gold-light);
+  background: none;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.tracker-add:hover {
+  border-color: var(--gold);
+}
+
 /* ── Drill-down: who got referred ── */
 .creator-toggle {
   display: flex;
@@ -985,6 +1523,9 @@ tr.row-open td {
 
 @media (max-width: 640px) {
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .edit-grid {
     grid-template-columns: 1fr;
   }
 }
