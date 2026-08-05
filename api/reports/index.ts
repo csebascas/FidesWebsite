@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAdminClient } from '../_lib/supabase.js';
-import { readSession, allowedEmails } from '../_lib/auth.js';
+import { readSession } from '../_lib/auth.js';
 import { fetchSuperwallMetrics } from '../_lib/superwall.js';
 
 // One function for the whole report system (Hobby plan caps deployments at 12
@@ -102,8 +102,17 @@ async function runReport(res: VercelResponse, wantEmail: boolean) {
 
   let emailedTo: string[] = [];
   const resendKey = process.env.RESEND_API_KEY;
+  if (wantEmail && !resendKey) {
+    console.error('[weekly-report] RESEND_API_KEY not set — skipping email');
+  }
   if (resendKey && wantEmail) {
-    const to = allowedEmails();
+    // Report recipients are independent of ADMIN_EMAILS (that list also
+    // controls dashboard login) so adding a login admin doesn't silently
+    // add them to the report distribution.
+    const to = (process.env.REPORT_TO || '')
+      .split(',')
+      .map((e) => e.trim())
+      .filter(Boolean);
     try {
       const r = await fetch('https://api.resend.com/emails', {
         method: 'POST',
