@@ -187,6 +187,16 @@
             <div class="fld"><label>Span (zoom)</label><input type="number" step="0.01" min="0.05" max="1" v-model.number="st.cam.span" /></div>
             <div class="fld" v-if="st.hasRequired"><label>Continue after N</label><input type="number" step="1" min="1" max="12" v-model.number="st.required" /></div>
           </div>
+
+          <!-- Tappable circles: the heading + body shown when the reader taps a hotspot -->
+          <div v-if="st.hotspots.length" class="hotspots-edit">
+            <div class="hotspots-label">Tappable circles ({{ st.hotspots.length }})</div>
+            <div class="hotspot-row" v-for="(h, hi) in st.hotspots" :key="hi">
+              <div class="hotspot-region" :title="'Circle position: ' + h.region">◉ {{ h.region || '(unplaced)' }}</div>
+              <div class="fld"><label>Heading</label><input v-model="h.heading" placeholder="Short title, e.g. The still point." /></div>
+              <div class="fld"><label>Body (info shown on tap)</label><textarea v-model="h.body" rows="3" placeholder="The extra information the reader reads when they tap this circle."></textarea></div>
+            </div>
+          </div>
         </div>
         <div class="row-btns save-all">
           <button class="btn" @click="saveLesson" :disabled="busy">Save scene steps</button>
@@ -301,6 +311,13 @@ interface Painting {
 // the two things authors want to tune from the web: where the camera frames the
 // painting (cam u/v/span) and, for the explore step, how many hotspots the reader
 // must tap before Continue unlocks (required).
+// A tappable circle in the room: mapped to a region, with the heading + body
+// text the reader sees when they tap it.
+interface ArtHotspot {
+  region: string
+  heading: string
+  body: string
+}
 interface ArtStep {
   idx: number // index in lesson.content, so edits write back to the right step
   type: string // art_find | art_explore | art_mcq
@@ -308,6 +325,7 @@ interface ArtStep {
   cam: { u: number; v: number; span: number }
   hasRequired: boolean
   required: number
+  hotspots: ArtHotspot[] // the tappable circles (art_explore only); empty otherwise
 }
 
 interface Region {
@@ -457,6 +475,13 @@ async function loadLesson(lessonId: string | null | undefined) {
         },
         hasRequired: s.type === 'art_explore',
         required: Number(s.required ?? 3),
+        hotspots: Array.isArray(s.hotspots)
+          ? s.hotspots.map((h: any) => ({
+              region: String(h.region ?? ''),
+              heading: String(h.heading ?? ''),
+              body: String(h.body ?? ''),
+            }))
+          : [],
       })
     }
   })
@@ -711,6 +736,15 @@ async function saveLesson() {
       span: round3(Math.min(1, Math.max(0.05, st.cam.span))),
     }
     if (st.hasRequired) s.required = Math.max(1, Math.round(st.required))
+    // Write the hotspot heading/body text back, preserving each hotspot's region
+    // (position) and any other fields the original hotspot carried.
+    if (st.hotspots.length && Array.isArray(s.hotspots)) {
+      s.hotspots = s.hotspots.map((orig: any, i: number) => {
+        const edited = st.hotspots[i]
+        if (!edited) return orig
+        return { ...orig, region: edited.region, heading: edited.heading, body: edited.body }
+      })
+    }
   }
   const res = await adminRpc({
     action: 'update',
@@ -791,6 +825,12 @@ async function saveLesson() {
 .step-type { font-family: var(--sans); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); background: rgba(196,145,44,0.1); border-radius: 4px; padding: 2px 7px; }
 .step-label { font-family: var(--sans); font-size: 12.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .step-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.hotspots-edit { margin-top: 12px; padding-top: 12px; border-top: 0.5px solid var(--line); }
+.hotspots-label { font-family: var(--sans); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); margin-bottom: 8px; }
+.hotspot-row { display: grid; grid-template-columns: 130px minmax(0, 1fr) minmax(0, 2fr); gap: 10px; align-items: start; margin-bottom: 8px; }
+.hotspot-region { font-family: var(--sans); font-size: 11.5px; color: var(--gold-light); padding-top: 26px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hotspot-row textarea { background: var(--raised); border: 0.5px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: var(--sans); font-size: 12.5px; line-height: 1.45; resize: vertical; }
+.hotspot-row textarea:focus { outline: none; border-color: var(--gold); }
 .region-row { border: 0.5px solid var(--line); border-radius: 6px; padding: 9px 10px; margin-bottom: 8px; cursor: pointer; background: var(--surface); }
 .region-row.sel { border-color: var(--gold-light); }
 .region-top { display: flex; align-items: center; gap: 8px; }
