@@ -279,6 +279,12 @@
               <div class="fld" style="margin-top:8px"><label>Body</label><textarea v-model="k.body" rows="2" placeholder="The narrative shown at this camera position."></textarea></div>
             </div>
           </div>
+
+          <!-- Opening scene: the intro card text at the very start of the room -->
+          <div v-if="st.scene" class="hotspots-edit">
+            <div class="hotspots-label">Opening — intro card</div>
+            <div class="fld"><label>Body (the opening line under the title)</label><textarea v-model="st.scene.body" rows="3" placeholder="The opening narrative shown before the room begins."></textarea></div>
+          </div>
         </div>
         <div class="row-btns save-all">
           <button class="btn" @click="saveLesson" :disabled="busy">Save scene steps</button>
@@ -424,6 +430,8 @@ interface ArtStep {
   reflect: { prompt: string; minWords: number } | null
   // automatic pan — a sequence of keyframes, each a camera + narrative (art_pan only)
   pan: { keyframes: { u: number; v: number; span: number; heading: string; body: string }[] } | null
+  // opening scene of the room — the intro card body text (art_scene only)
+  scene: { body: string } | null
   // region slugs this step uses — drives the "isolate this step" canvas filter
   regionSlugs: string[]
 }
@@ -561,6 +569,7 @@ function stepTypeLabel(t: string): string {
   if (t === 'art_choice') return 'Tap A/B/C'
   if (t === 'art_reflect') return 'Reflect'
   if (t === 'art_pan') return 'Auto-pan'
+  if (t === 'art_scene') return 'Opening'
   return t
 }
 
@@ -590,7 +599,7 @@ async function loadLesson(lessonId: string | null | undefined) {
   const content: any[] = Array.isArray(row.content) ? row.content : []
   lesson.value = { id: row.id, title: row.title, content }
   const steps: ArtStep[] = []
-    const ART_TYPES = ['art_find', 'art_explore', 'art_mcq', 'art_choice', 'art_reflect', 'art_pan']
+    const ART_TYPES = ['art_find', 'art_explore', 'art_mcq', 'art_choice', 'art_reflect', 'art_pan', 'art_scene']
   content.forEach((s: any, idx: number) => {
     if (!s || !ART_TYPES.includes(s.type)) return
     const hotspots: ArtHotspot[] = Array.isArray(s.hotspots)
@@ -673,6 +682,7 @@ async function loadLesson(lessonId: string | null | undefined) {
               })),
             }
           : null,
+      scene: s.type === 'art_scene' ? { body: String(s.label?.body ?? '') } : null,
       regionSlugs,
     })
   })
@@ -977,6 +987,10 @@ async function saveLesson() {
           body: e.body,
         }
       })
+    }
+    // art_scene: write the opening card body (artist/title/medium stay derived).
+    if (st.scene) {
+      s.label = { ...(s.label ?? {}), body: st.scene.body }
     }
     // Write the hotspot heading/body text back, preserving each hotspot's region
     // (position) and any other fields the original hotspot carried.
