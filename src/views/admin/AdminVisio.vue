@@ -262,6 +262,23 @@
             <div class="fld" style="margin-bottom:8px"><label>Prompt</label><textarea v-model="st.reflect.prompt" rows="3" placeholder="The reflection question the reader responds to."></textarea></div>
             <div class="fld" style="max-width:180px"><label>Minimum words</label><input type="number" step="1" min="1" max="100" v-model.number="st.reflect.minWords" /></div>
           </div>
+
+          <!-- Auto-pan: the automatic beginning zoom-ins. Each keyframe is a camera
+               position the view moves to, with its narrative line. -->
+          <div v-if="st.pan" class="hotspots-edit">
+            <div class="hotspots-label">Automatic pan — {{ st.pan.keyframes.length }} keyframe(s)</div>
+            <p class="cam-note" style="margin:0 0 10px">Each keyframe is where the camera moves to (u/v = center 0–1, span = zoom, smaller is closer) as the reader taps Continue, with the line shown there.</p>
+            <div class="step-card" v-for="(k, ki) in st.pan.keyframes" :key="ki" style="background:var(--raised)">
+              <div class="step-head"><span class="step-num">Keyframe {{ ki + 1 }}</span></div>
+              <div class="step-grid">
+                <div class="fld"><label>Center u</label><input type="number" step="0.01" min="0" max="1" v-model.number="k.u" /></div>
+                <div class="fld"><label>Center v</label><input type="number" step="0.01" min="0" max="1" v-model.number="k.v" /></div>
+                <div class="fld"><label>Span (zoom)</label><input type="number" step="0.01" min="0.05" max="1" v-model.number="k.span" /></div>
+              </div>
+              <div class="fld" style="margin-top:8px"><label>Heading</label><input v-model="k.heading" placeholder="Short line, e.g. God arrives." /></div>
+              <div class="fld" style="margin-top:8px"><label>Body</label><textarea v-model="k.body" rows="2" placeholder="The narrative shown at this camera position."></textarea></div>
+            </div>
+          </div>
         </div>
         <div class="row-btns save-all">
           <button class="btn" @click="saveLesson" :disabled="busy">Save scene steps</button>
@@ -405,6 +422,8 @@ interface ArtStep {
   choice: { question: string; options: { id: string; text: string; region: string }[] } | null
   // reflection prompt (art_reflect only)
   reflect: { prompt: string; minWords: number } | null
+  // automatic pan — a sequence of keyframes, each a camera + narrative (art_pan only)
+  pan: { keyframes: { u: number; v: number; span: number; heading: string; body: string }[] } | null
   // region slugs this step uses — drives the "isolate this step" canvas filter
   regionSlugs: string[]
 }
@@ -541,6 +560,7 @@ function stepTypeLabel(t: string): string {
   if (t === 'art_mcq') return 'Poll'
   if (t === 'art_choice') return 'Tap A/B/C'
   if (t === 'art_reflect') return 'Reflect'
+  if (t === 'art_pan') return 'Auto-pan'
   return t
 }
 
@@ -570,7 +590,7 @@ async function loadLesson(lessonId: string | null | undefined) {
   const content: any[] = Array.isArray(row.content) ? row.content : []
   lesson.value = { id: row.id, title: row.title, content }
   const steps: ArtStep[] = []
-    const ART_TYPES = ['art_find', 'art_explore', 'art_mcq', 'art_choice', 'art_reflect']
+    const ART_TYPES = ['art_find', 'art_explore', 'art_mcq', 'art_choice', 'art_reflect', 'art_pan']
   content.forEach((s: any, idx: number) => {
     if (!s || !ART_TYPES.includes(s.type)) return
     const hotspots: ArtHotspot[] = Array.isArray(s.hotspots)
@@ -640,6 +660,18 @@ async function loadLesson(lessonId: string | null | undefined) {
       reflect:
         s.type === 'art_reflect'
           ? { prompt: String(s.prompt ?? ''), minWords: Number(s.minWords ?? 6) }
+          : null,
+      pan:
+        s.type === 'art_pan'
+          ? {
+              keyframes: (Array.isArray(s.keyframes) ? s.keyframes : []).map((k: any) => ({
+                u: Number(k?.cam?.u ?? 0.5),
+                v: Number(k?.cam?.v ?? 0.5),
+                span: Number(k?.cam?.span ?? 0.6),
+                heading: String(k?.heading ?? ''),
+                body: String(k?.body ?? ''),
+              })),
+            }
           : null,
       regionSlugs,
     })
@@ -927,6 +959,24 @@ async function saveLesson() {
     if (st.reflect) {
       s.prompt = st.reflect.prompt
       s.minWords = Math.max(1, Math.round(st.reflect.minWords))
+    }
+    // art_pan: write each keyframe's camera + narrative, preserving any other
+    // fields the original keyframe carried.
+    if (st.pan && Array.isArray(s.keyframes)) {
+      s.keyframes = s.keyframes.map((orig: any, i: number) => {
+        const e = st.pan!.keyframes[i]
+        if (!e) return orig
+        return {
+          ...orig,
+          cam: {
+            u: round3(clamp01(e.u)),
+            v: round3(clamp01(e.v)),
+            span: round3(Math.min(1, Math.max(0.05, e.span))),
+          },
+          heading: e.heading,
+          body: e.body,
+        }
+      })
     }
     // Write the hotspot heading/body text back, preserving each hotspot's region
     // (position) and any other fields the original hotspot carried.
