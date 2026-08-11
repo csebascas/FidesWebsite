@@ -233,6 +233,35 @@
             </div>
             <div class="fld" style="margin-top:10px"><label>Why (explanation shown after answering)</label><textarea v-model="st.mcq.why" rows="3" placeholder="Why the correct answer is right."></textarea></div>
           </div>
+
+          <!-- Tap-the-region choice: A/B/C answers placed on the painting. Each
+               option is pinned to a region; Isolate above, then drag those circles
+               to move the A/B/C on the image. -->
+          <div v-if="st.choice" class="hotspots-edit">
+            <div class="hotspots-label">Tap-on-painting choices — placed on regions</div>
+            <div class="fld" style="margin-bottom:10px"><label>Question</label><textarea v-model="st.choice.question" rows="2" placeholder="What the reader is asked to identify by tapping."></textarea></div>
+            <div class="opt-row" v-for="(o, oi) in st.choice.options" :key="oi">
+              <div class="opt-correct"><span class="opt-id">{{ (o.id || String.fromCharCode(97 + oi)).toUpperCase() }}</span></div>
+              <div style="display:grid; gap:8px">
+                <textarea class="opt-text" v-model="o.text" rows="2" placeholder="Answer choice text"></textarea>
+                <div class="fld">
+                  <label>Placed on region (its circle on the painting)</label>
+                  <select v-model="o.region" class="region-select">
+                    <option value="">(no region)</option>
+                    <option v-for="slug in regionSlugOptions" :key="slug" :value="slug">{{ slug }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <p class="cam-note" style="margin-top:6px">To move an answer on the image: pick its region here, then <strong>Isolate</strong> this step and drag that circle on the painting.</p>
+          </div>
+
+          <!-- Reflection prompt -->
+          <div v-if="st.reflect" class="hotspots-edit">
+            <div class="hotspots-label">Reflection</div>
+            <div class="fld" style="margin-bottom:8px"><label>Prompt</label><textarea v-model="st.reflect.prompt" rows="3" placeholder="The reflection question the reader responds to."></textarea></div>
+            <div class="fld" style="max-width:180px"><label>Minimum words</label><input type="number" step="1" min="1" max="100" v-model.number="st.reflect.minWords" /></div>
+          </div>
         </div>
         <div class="row-btns save-all">
           <button class="btn" @click="saveLesson" :disabled="busy">Save scene steps</button>
@@ -372,6 +401,10 @@ interface ArtStep {
   find: { target: string; prompt: string; whyFound: string; whyRevealed: string } | null
   // multiple-choice poll (art_mcq only); null otherwise
   mcq: { question: string; why: string; options: McqOption[] } | null
+  // tap-the-region choice — the A/B/C answers placed on the painting (art_choice only)
+  choice: { question: string; options: { id: string; text: string; region: string }[] } | null
+  // reflection prompt (art_reflect only)
+  reflect: { prompt: string; minWords: number } | null
   // region slugs this step uses — drives the "isolate this step" canvas filter
   regionSlugs: string[]
 }
@@ -506,8 +539,13 @@ function stepTypeLabel(t: string): string {
   if (t === 'art_find') return 'Find'
   if (t === 'art_explore') return 'Explore'
   if (t === 'art_mcq') return 'Poll'
+  if (t === 'art_choice') return 'Tap A/B/C'
+  if (t === 'art_reflect') return 'Reflect'
   return t
 }
+
+// Slugs of every region on this painting — the options for placing an A/B/C answer.
+const regionSlugOptions = computed(() => regions.value.map((r) => r.slug).filter(Boolean))
 
 // Only one MCQ option is correct — selecting one clears the rest.
 function setCorrect(st: ArtStep, oi: number) {
@@ -532,8 +570,9 @@ async function loadLesson(lessonId: string | null | undefined) {
   const content: any[] = Array.isArray(row.content) ? row.content : []
   lesson.value = { id: row.id, title: row.title, content }
   const steps: ArtStep[] = []
+    const ART_TYPES = ['art_find', 'art_explore', 'art_mcq', 'art_choice', 'art_reflect']
   content.forEach((s: any, idx: number) => {
-    if (!s || (s.type !== 'art_find' && s.type !== 'art_explore' && s.type !== 'art_mcq')) return
+    if (!s || !ART_TYPES.includes(s.type)) return
     const hotspots: ArtHotspot[] = Array.isArray(s.hotspots)
       ? s.hotspots.map((h: any) => ({
           region: String(h.region ?? ''),
@@ -541,12 +580,21 @@ async function loadLesson(lessonId: string | null | undefined) {
           body: String(h.body ?? ''),
         }))
       : []
+    const choiceOptions = s.type === 'art_choice' && Array.isArray(s.options)
+      ? s.options.map((o: any, i: number) => ({
+          id: String(o.id ?? String.fromCharCode(97 + i)),
+          text: String(o.text ?? ''),
+          region: String(o.region ?? ''),
+        }))
+      : []
     const regionSlugs =
       s.type === 'art_find'
         ? s.target ? [String(s.target)] : []
         : s.type === 'art_explore'
           ? hotspots.map((h) => h.region).filter(Boolean)
-          : []
+          : s.type === 'art_choice'
+            ? choiceOptions.map((o: { region: string }) => o.region).filter(Boolean)
+            : []
     steps.push({
       idx,
       type: s.type,
@@ -584,6 +632,14 @@ async function loadLesson(lessonId: string | null | undefined) {
                   }))
                 : [],
             }
+          : null,
+      choice:
+        s.type === 'art_choice'
+          ? { question: String(s.question ?? ''), options: choiceOptions }
+          : null,
+      reflect:
+        s.type === 'art_reflect'
+          ? { prompt: String(s.prompt ?? ''), minWords: Number(s.minWords ?? 6) }
           : null,
       regionSlugs,
     })
@@ -858,6 +914,20 @@ async function saveLesson() {
         return out
       })
     }
+    // art_choice: write question + each option's text and its region (position).
+    if (st.choice && Array.isArray(s.options)) {
+      s.question = st.choice.question
+      s.options = s.options.map((orig: any, i: number) => {
+        const e = st.choice!.options[i]
+        if (!e) return orig
+        return { ...orig, text: e.text, region: e.region }
+      })
+    }
+    // art_reflect: write the prompt (+ minimum words).
+    if (st.reflect) {
+      s.prompt = st.reflect.prompt
+      s.minWords = Math.max(1, Math.round(st.reflect.minWords))
+    }
     // Write the hotspot heading/body text back, preserving each hotspot's region
     // (position) and any other fields the original hotspot carried.
     if (st.hotspots.length && Array.isArray(s.hotspots)) {
@@ -970,6 +1040,8 @@ async function saveLesson() {
 .opt-id { font-family: var(--sans); font-size: 11px; font-weight: 700; color: var(--text-2); }
 .opt-text { background: var(--raised); border: 0.5px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: var(--sans); font-size: 12.5px; line-height: 1.45; resize: vertical; }
 .opt-text:focus { outline: none; border-color: var(--gold); }
+.region-select { background: var(--raised); border: 0.5px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: var(--sans); font-size: 12.5px; }
+.region-select:focus { outline: none; border-color: var(--gold); }
 .region-row { border: 0.5px solid var(--line); border-radius: 6px; padding: 9px 10px; margin-bottom: 8px; cursor: pointer; background: var(--surface); }
 .region-row.sel { border-color: var(--gold-light); }
 .region-top { display: flex; align-items: center; gap: 8px; }
