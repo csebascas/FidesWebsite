@@ -188,6 +188,14 @@
             <div class="fld" v-if="st.hasRequired"><label>Continue after N</label><input type="number" step="1" min="1" max="12" v-model.number="st.required" /></div>
           </div>
 
+          <!-- 'Find this' step: the instruction + reveal text -->
+          <div v-if="st.find" class="hotspots-edit">
+            <div class="hotspots-label">Find-this text <span class="hotspot-region" style="padding:0">◉ {{ st.find.target || '(no target)' }}</span></div>
+            <div class="fld" style="margin-bottom:8px"><label>Prompt (the "tap it" instruction)</label><textarea v-model="st.find.prompt" rows="2" placeholder="What the reader is asked to find and tap."></textarea></div>
+            <div class="fld" style="margin-bottom:8px"><label>Why found (confirmation on the correct tap)</label><textarea v-model="st.find.whyFound" rows="2" placeholder="Short confirmation shown when they tap the right spot."></textarea></div>
+            <div class="fld"><label>Why revealed (the payoff explanation)</label><textarea v-model="st.find.whyRevealed" rows="3" placeholder="The fuller explanation revealed after they find it."></textarea></div>
+          </div>
+
           <!-- Tappable circles: the heading + body shown when the reader taps a hotspot -->
           <div v-if="st.hotspots.length" class="hotspots-edit">
             <div class="hotspots-label">Tappable circles ({{ st.hotspots.length }})</div>
@@ -326,6 +334,8 @@ interface ArtStep {
   hasRequired: boolean
   required: number
   hotspots: ArtHotspot[] // the tappable circles (art_explore only); empty otherwise
+  // 'find this' prompt + reveal text (art_find only); null otherwise
+  find: { target: string; prompt: string; whyFound: string; whyRevealed: string } | null
 }
 
 interface Region {
@@ -482,6 +492,15 @@ async function loadLesson(lessonId: string | null | undefined) {
               body: String(h.body ?? ''),
             }))
           : [],
+        find:
+          s.type === 'art_find'
+            ? {
+                target: String(s.target ?? ''),
+                prompt: String(s.prompt ?? ''),
+                whyFound: String(s.whyFound ?? ''),
+                whyRevealed: String(s.whyRevealed ?? ''),
+              }
+            : null,
       })
     }
   })
@@ -745,6 +764,12 @@ async function saveLesson() {
         return { ...orig, region: edited.region, heading: edited.heading, body: edited.body }
       })
     }
+    // art_find: write the prompt + reveal text back (target/position preserved).
+    if (st.find) {
+      s.prompt = st.find.prompt
+      s.whyFound = st.find.whyFound
+      s.whyRevealed = st.find.whyRevealed
+    }
   }
   const res = await adminRpc({
     action: 'update',
@@ -785,6 +810,8 @@ async function saveLesson() {
 .fld .opt { color: var(--text-3); font-weight: 400; }
 .fld input { background: var(--raised); border: 0.5px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: var(--sans); font-size: 12.5px; }
 .fld input:focus { outline: none; border-color: var(--gold); }
+.fld textarea { background: var(--raised); border: 0.5px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: var(--sans); font-size: 12.5px; line-height: 1.45; resize: vertical; }
+.fld textarea:focus { outline: none; border-color: var(--gold); }
 
 .row-btns { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
 .btn { background: var(--gold); color: #0C0C0C; border: none; border-radius: 6px; padding: 9px 16px; font-family: var(--sans); font-size: 12.5px; font-weight: 600; cursor: pointer; }
