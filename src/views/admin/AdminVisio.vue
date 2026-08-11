@@ -88,8 +88,9 @@
           />
           <div v-if="imgError" class="img-err">Image didn't load. Check the storage path / image source.</div>
 
-          <!-- Overlay markers (screen-space, derived from normalized coords) -->
-          <template v-for="r in regions" :key="r._key">
+          <!-- Overlay markers (screen-space, derived from normalized coords).
+               When a scene step is focused, only that step's regions are shown. -->
+          <template v-for="r in visibleRegions" :key="r._key">
             <!-- Ellipse -->
             <div
               v-if="r.shape === 'ellipse'"
@@ -176,16 +177,29 @@
           <strong>span</strong> is the zoom (smaller = closer). <strong>Continue after N</strong> sets how many
           hotspots the reader must tap on the explore step before Continue unlocks.
         </p>
-        <div class="step-card" v-for="st in artSteps" :key="st.idx">
+        <div class="step-card" v-for="(st, si) in artSteps" :key="st.idx" :class="{ focused: activeStepIdx === st.idx }">
           <div class="step-head">
             <span class="step-type">{{ stepTypeLabel(st.type) }}</span>
+            <span class="step-num">Step {{ si + 1 }}</span>
             <span class="step-label">{{ st.label }}</span>
+            <button
+              v-if="st.regionSlugs.length"
+              class="btn tiny focus-btn"
+              @click="focusStep(st.idx)"
+            >{{ activeStepIdx === st.idx ? 'Show all' : 'Isolate' }}</button>
           </div>
-          <div class="step-grid">
+
+          <!-- Camera framing: only steps that carry an explicit camera. Others
+               frame from their region(s) — move the circles to reposition. -->
+          <div v-if="st.hasCam" class="step-grid">
             <div class="fld"><label>Center u</label><input type="number" step="0.01" min="0" max="1" v-model.number="st.cam.u" /></div>
             <div class="fld"><label>Center v</label><input type="number" step="0.01" min="0" max="1" v-model.number="st.cam.v" /></div>
             <div class="fld"><label>Span (zoom)</label><input type="number" step="0.01" min="0.05" max="1" v-model.number="st.cam.span" /></div>
             <div class="fld" v-if="st.hasRequired"><label>Continue after N</label><input type="number" step="1" min="1" max="12" v-model.number="st.required" /></div>
+          </div>
+          <div v-else class="step-grid">
+            <div class="fld" v-if="st.hasRequired"><label>Continue after N</label><input type="number" step="1" min="1" max="12" v-model.number="st.required" /></div>
+            <p class="cam-note" v-if="st.regionSlugs.length">Framed by its {{ st.regionSlugs.length }} region(s). Use <strong>Isolate</strong> above, then drag those circles on the painting to reposition where this step focuses.</p>
           </div>
 
           <!-- 'Find this' step: the instruction + reveal text -->
@@ -204,6 +218,20 @@
               <div class="fld"><label>Heading</label><input v-model="h.heading" placeholder="Short title, e.g. The still point." /></div>
               <div class="fld"><label>Body (info shown on tap)</label><textarea v-model="h.body" rows="3" placeholder="The extra information the reader reads when they tap this circle."></textarea></div>
             </div>
+          </div>
+
+          <!-- Multiple-choice poll: question, options a/b/c/d, correct answer, explanation -->
+          <div v-if="st.mcq" class="hotspots-edit">
+            <div class="hotspots-label">Poll — question &amp; choices</div>
+            <div class="fld" style="margin-bottom:10px"><label>Question</label><textarea v-model="st.mcq.question" rows="2" placeholder="The question shown to the reader."></textarea></div>
+            <div class="opt-row" v-for="(o, oi) in st.mcq.options" :key="oi">
+              <label class="opt-correct" :title="'Mark ' + (o.id || String.fromCharCode(97 + oi)).toUpperCase() + ' as the correct answer'">
+                <input type="radio" :name="'correct-' + st.idx" :checked="o.correct" @change="setCorrect(st, oi)" />
+                <span class="opt-id">{{ (o.id || String.fromCharCode(97 + oi)).toUpperCase() }}</span>
+              </label>
+              <textarea class="opt-text" v-model="o.text" rows="2" placeholder="Answer choice text"></textarea>
+            </div>
+            <div class="fld" style="margin-top:10px"><label>Why (explanation shown after answering)</label><textarea v-model="st.mcq.why" rows="3" placeholder="Why the correct answer is right."></textarea></div>
           </div>
         </div>
         <div class="row-btns save-all">
@@ -326,16 +354,26 @@ interface ArtHotspot {
   heading: string
   body: string
 }
+interface McqOption {
+  id: string
+  text: string
+  correct: boolean
+}
 interface ArtStep {
   idx: number // index in lesson.content, so edits write back to the right step
   type: string // art_find | art_explore | art_mcq
   label: string
+  hasCam: boolean // some steps frame the camera explicitly; others derive it from their region(s)
   cam: { u: number; v: number; span: number }
   hasRequired: boolean
   required: number
   hotspots: ArtHotspot[] // the tappable circles (art_explore only); empty otherwise
   // 'find this' prompt + reveal text (art_find only); null otherwise
   find: { target: string; prompt: string; whyFound: string; whyRevealed: string } | null
+  // multiple-choice poll (art_mcq only); null otherwise
+  mcq: { question: string; why: string; options: McqOption[] } | null
+  // region slugs this step uses — drives the "isolate this step" canvas filter
+  regionSlugs: string[]
 }
 
 interface Region {
@@ -369,10 +407,26 @@ const previewState = ref<'scene' | 'hotspots'>('scene')
 const lesson = ref<{ id: string; title: string; content: any[] } | null>(null)
 const artSteps = ref<ArtStep[]>([])
 const lessonMsg = ref('')
+// When a step is focused, the canvas shows only that step's regions (isolate),
+// so you're not looking at every hotspot on the painting at once.
+const activeStepIdx = ref<number | null>(null)
 
 const imgEl = ref<HTMLImageElement | null>(null)
 const renderedW = ref(0)
 const renderedH = ref(0)
+
+// Regions to draw on the canvas: all of them, unless a step is focused — then
+// only the regions that step uses, so each step can be placed in isolation.
+const visibleRegions = computed(() => {
+  if (activeStepIdx.value === null) return regions.value
+  const step = artSteps.value.find((s) => s.idx === activeStepIdx.value)
+  if (!step || !step.regionSlugs.length) return regions.value
+  const wanted = new Set(step.regionSlugs)
+  return regions.value.filter((r) => wanted.has(r.slug))
+})
+function focusStep(idx: number) {
+  activeStepIdx.value = activeStepIdx.value === idx ? null : idx
+}
 
 const appRegions = computed(() => regions.value.filter((r) => r.shape === 'ellipse'))
 const unsupportedRegionCount = computed(() => regions.value.length - appRegions.value.length)
@@ -451,8 +505,14 @@ async function selectPainting(p: Painting) {
 function stepTypeLabel(t: string): string {
   if (t === 'art_find') return 'Find'
   if (t === 'art_explore') return 'Explore'
-  if (t === 'art_mcq') return 'Question'
+  if (t === 'art_mcq') return 'Poll'
   return t
+}
+
+// Only one MCQ option is correct — selecting one clears the rest.
+function setCorrect(st: ArtStep, oi: number) {
+  if (!st.mcq) return
+  st.mcq.options.forEach((o, i) => (o.correct = i === oi))
 }
 
 // Load the painting's linked Visio lesson and pull out its camera-driven steps.
@@ -473,38 +533,63 @@ async function loadLesson(lessonId: string | null | undefined) {
   lesson.value = { id: row.id, title: row.title, content }
   const steps: ArtStep[] = []
   content.forEach((s: any, idx: number) => {
-    if (s && s.cam && (s.type === 'art_find' || s.type === 'art_explore' || s.type === 'art_mcq')) {
-      steps.push({
-        idx,
-        type: s.type,
-        label: s.prompt || s.question || (s.type === 'art_explore' ? 'Explore the painting' : s.type),
-        cam: {
-          u: Number(s.cam.u ?? 0.5),
-          v: Number(s.cam.v ?? 0.5),
-          span: Number(s.cam.span ?? 1),
-        },
-        hasRequired: s.type === 'art_explore',
-        required: Number(s.required ?? 3),
-        hotspots: Array.isArray(s.hotspots)
-          ? s.hotspots.map((h: any) => ({
-              region: String(h.region ?? ''),
-              heading: String(h.heading ?? ''),
-              body: String(h.body ?? ''),
-            }))
-          : [],
-        find:
-          s.type === 'art_find'
-            ? {
-                target: String(s.target ?? ''),
-                prompt: String(s.prompt ?? ''),
-                whyFound: String(s.whyFound ?? ''),
-                whyRevealed: String(s.whyRevealed ?? ''),
-              }
-            : null,
-      })
-    }
+    if (!s || (s.type !== 'art_find' && s.type !== 'art_explore' && s.type !== 'art_mcq')) return
+    const hotspots: ArtHotspot[] = Array.isArray(s.hotspots)
+      ? s.hotspots.map((h: any) => ({
+          region: String(h.region ?? ''),
+          heading: String(h.heading ?? ''),
+          body: String(h.body ?? ''),
+        }))
+      : []
+    const regionSlugs =
+      s.type === 'art_find'
+        ? s.target ? [String(s.target)] : []
+        : s.type === 'art_explore'
+          ? hotspots.map((h) => h.region).filter(Boolean)
+          : []
+    steps.push({
+      idx,
+      type: s.type,
+      label:
+        s.prompt || s.question ||
+        (s.type === 'art_explore' ? 'Explore the painting' : s.type === 'art_mcq' ? 'Multiple choice' : s.type),
+      hasCam: !!s.cam,
+      cam: {
+        u: Number(s.cam?.u ?? 0.5),
+        v: Number(s.cam?.v ?? 0.5),
+        span: Number(s.cam?.span ?? 1),
+      },
+      hasRequired: s.type === 'art_explore',
+      required: Number(s.required ?? 3),
+      hotspots,
+      find:
+        s.type === 'art_find'
+          ? {
+              target: String(s.target ?? ''),
+              prompt: String(s.prompt ?? ''),
+              whyFound: String(s.whyFound ?? ''),
+              whyRevealed: String(s.whyRevealed ?? ''),
+            }
+          : null,
+      mcq:
+        s.type === 'art_mcq'
+          ? {
+              question: String(s.question ?? ''),
+              why: String(s.why ?? ''),
+              options: Array.isArray(s.options)
+                ? s.options.map((o: any) => ({
+                    id: String(o.id ?? ''),
+                    text: String(o.text ?? ''),
+                    correct: !!(o.correct ?? o.isCorrect),
+                  }))
+                : [],
+            }
+          : null,
+      regionSlugs,
+    })
   })
   artSteps.value = steps
+  activeStepIdx.value = null
 }
 
 function newPainting() {
@@ -749,12 +834,30 @@ async function saveLesson() {
   for (const st of artSteps.value) {
     const s = content[st.idx]
     if (!s) continue
-    s.cam = {
-      u: round3(clamp01(st.cam.u)),
-      v: round3(clamp01(st.cam.v)),
-      span: round3(Math.min(1, Math.max(0.05, st.cam.span))),
+    // Only write camera framing back if the step already had one — steps without
+    // a cam derive their framing from their region(s), so don't invent one.
+    if (st.hasCam) {
+      s.cam = {
+        u: round3(clamp01(st.cam.u)),
+        v: round3(clamp01(st.cam.v)),
+        span: round3(Math.min(1, Math.max(0.05, st.cam.span))),
+      }
     }
     if (st.hasRequired) s.required = Math.max(1, Math.round(st.required))
+    // MCQ: write question, options (text + correct flag, preserving the original
+    // correct-field key), and the explanation.
+    if (st.mcq && Array.isArray(s.options)) {
+      s.question = st.mcq.question
+      s.why = st.mcq.why
+      s.options = s.options.map((orig: any, i: number) => {
+        const e = st.mcq!.options[i]
+        if (!e) return orig
+        const out: any = { ...orig, text: e.text }
+        if ('isCorrect' in orig) out.isCorrect = e.correct
+        else out.correct = e.correct
+        return out
+      })
+    }
     // Write the hotspot heading/body text back, preserving each hotspot's region
     // (position) and any other fields the original hotspot carried.
     if (st.hotspots.length && Array.isArray(s.hotspots)) {
@@ -858,6 +961,15 @@ async function saveLesson() {
 .hotspot-region { font-family: var(--sans); font-size: 11.5px; color: var(--gold-light); padding-top: 26px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hotspot-row textarea { background: var(--raised); border: 0.5px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: var(--sans); font-size: 12.5px; line-height: 1.45; resize: vertical; }
 .hotspot-row textarea:focus { outline: none; border-color: var(--gold); }
+.step-card.focused { border-color: var(--gold); background: rgba(196,145,44,0.05); }
+.step-num { font-family: var(--sans); font-size: 10.5px; color: var(--text-3); }
+.focus-btn { margin-left: auto; }
+.cam-note { font-family: var(--sans); font-size: 11.5px; color: var(--text-3); line-height: 1.5; margin: 4px 0 0; grid-column: 1 / -1; }
+.opt-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; margin-bottom: 8px; }
+.opt-correct { display: flex; flex-direction: column; align-items: center; gap: 3px; padding-top: 6px; cursor: pointer; }
+.opt-id { font-family: var(--sans); font-size: 11px; font-weight: 700; color: var(--text-2); }
+.opt-text { background: var(--raised); border: 0.5px solid var(--line); border-radius: 6px; padding: 8px 10px; color: var(--text); font-family: var(--sans); font-size: 12.5px; line-height: 1.45; resize: vertical; }
+.opt-text:focus { outline: none; border-color: var(--gold); }
 .region-row { border: 0.5px solid var(--line); border-radius: 6px; padding: 9px 10px; margin-bottom: 8px; cursor: pointer; background: var(--surface); }
 .region-row.sel { border-color: var(--gold-light); }
 .region-top { display: flex; align-items: center; gap: 8px; }
