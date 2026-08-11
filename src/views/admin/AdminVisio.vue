@@ -165,6 +165,36 @@
     </div>
     <p v-else-if="activeTab === 'editor' && selected && !selected.id" class="note">Save painting details first to unlock the hotspot canvas.</p>
 
+    <!-- Scene steps: camera placement + explore pacing, from the linked lesson -->
+    <div v-if="activeTab === 'editor' && selected && selected.id" class="section scene-steps">
+      <h2 class="section-title">Scene steps — camera &amp; pacing</h2>
+      <p v-if="!lesson" class="empty">This painting isn't linked to a Visio lesson, so there are no scene steps to place.</p>
+      <p v-else-if="!artSteps.length" class="empty">Linked lesson "{{ lesson.title }}" has no camera-driven art steps.</p>
+      <template v-else>
+        <p class="subtitle" style="margin-bottom: 14px">
+          Place where each step frames the painting: <strong>u</strong>/<strong>v</strong> are the center (0–1),
+          <strong>span</strong> is the zoom (smaller = closer). <strong>Continue after N</strong> sets how many
+          hotspots the reader must tap on the explore step before Continue unlocks.
+        </p>
+        <div class="step-card" v-for="st in artSteps" :key="st.idx">
+          <div class="step-head">
+            <span class="step-type">{{ stepTypeLabel(st.type) }}</span>
+            <span class="step-label">{{ st.label }}</span>
+          </div>
+          <div class="step-grid">
+            <div class="fld"><label>Center u</label><input type="number" step="0.01" min="0" max="1" v-model.number="st.cam.u" /></div>
+            <div class="fld"><label>Center v</label><input type="number" step="0.01" min="0" max="1" v-model.number="st.cam.v" /></div>
+            <div class="fld"><label>Span (zoom)</label><input type="number" step="0.01" min="0.05" max="1" v-model.number="st.cam.span" /></div>
+            <div class="fld" v-if="st.hasRequired"><label>Continue after N</label><input type="number" step="1" min="1" max="12" v-model.number="st.required" /></div>
+          </div>
+        </div>
+        <div class="row-btns save-all">
+          <button class="btn" @click="saveLesson" :disabled="busy">Save scene steps</button>
+          <span v-if="lessonMsg" class="msg">{{ lessonMsg }}</span>
+        </div>
+      </template>
+    </div>
+
     <section v-if="activeTab === 'preview'" class="preview-panel" aria-label="Visio app preview">
       <div v-if="!selected" class="empty">Choose a painting to preview it.</div>
       <template v-else-if="!previewReady">
@@ -264,6 +294,20 @@ interface Painting {
   height_px: number
   license: string
   source_url: string | null
+  lesson_id?: string | null
+}
+
+// A camera-driven step inside the linked Visio lesson's content. We only expose
+// the two things authors want to tune from the web: where the camera frames the
+// painting (cam u/v/span) and, for the explore step, how many hotspots the reader
+// must tap before Continue unlocks (required).
+interface ArtStep {
+  idx: number // index in lesson.content, so edits write back to the right step
+  type: string // art_find | art_explore | art_mcq
+  label: string
+  cam: { u: number; v: number; span: number }
+  hasRequired: boolean
+  required: number
 }
 
 interface Region {
@@ -292,6 +336,11 @@ const paintMsg = ref('')
 const regionMsg = ref('')
 const activeTab = ref<'editor' | 'preview'>('editor')
 const previewState = ref<'scene' | 'hotspots'>('scene')
+
+// Scene-step editing (camera placement + explore pacing) from the linked lesson.
+const lesson = ref<{ id: string; title: string; content: any[] } | null>(null)
+const artSteps = ref<ArtStep[]>([])
+const lessonMsg = ref('')
 
 const imgEl = ref<HTMLImageElement | null>(null)
 const renderedW = ref(0)
@@ -368,6 +417,50 @@ async function selectPainting(p: Painting) {
   selKey.value = null
   deletedIds.value = []
   await loadRegions(p.id!)
+  await loadLesson(p.lesson_id)
+}
+
+function stepTypeLabel(t: string): string {
+  if (t === 'art_find') return 'Find'
+  if (t === 'art_explore') return 'Explore'
+  if (t === 'art_mcq') return 'Question'
+  return t
+}
+
+// Load the painting's linked Visio lesson and pull out its camera-driven steps.
+async function loadLesson(lessonId: string | null | undefined) {
+  lesson.value = null
+  artSteps.value = []
+  lessonMsg.value = ''
+  if (!lessonId) return
+  const { data, error } = await adminRpc({
+    action: 'select',
+    table: 'lessons',
+    match: { id: lessonId },
+    limit: 1,
+  })
+  const row = Array.isArray(data) ? data[0] : data
+  if (error || !row) return
+  const content: any[] = Array.isArray(row.content) ? row.content : []
+  lesson.value = { id: row.id, title: row.title, content }
+  const steps: ArtStep[] = []
+  content.forEach((s: any, idx: number) => {
+    if (s && s.cam && (s.type === 'art_find' || s.type === 'art_explore' || s.type === 'art_mcq')) {
+      steps.push({
+        idx,
+        type: s.type,
+        label: s.prompt || s.question || (s.type === 'art_explore' ? 'Explore the painting' : s.type),
+        cam: {
+          u: Number(s.cam.u ?? 0.5),
+          v: Number(s.cam.v ?? 0.5),
+          span: Number(s.cam.span ?? 1),
+        },
+        hasRequired: s.type === 'art_explore',
+        required: Number(s.required ?? 3),
+      })
+    }
+  })
+  artSteps.value = steps
 }
 
 function newPainting() {
@@ -600,6 +693,36 @@ async function saveRegions() {
     busy.value = false
   }
 }
+
+// Write the edited camera placement + explore pacing back into the lesson content.
+// Only the cam and required fields of the matched steps change; every other step
+// and field is preserved exactly.
+async function saveLesson() {
+  if (!lesson.value) return
+  busy.value = true
+  lessonMsg.value = ''
+  const content = lesson.value.content.map((s: any) => ({ ...s }))
+  for (const st of artSteps.value) {
+    const s = content[st.idx]
+    if (!s) continue
+    s.cam = {
+      u: round3(clamp01(st.cam.u)),
+      v: round3(clamp01(st.cam.v)),
+      span: round3(Math.min(1, Math.max(0.05, st.cam.span))),
+    }
+    if (st.hasRequired) s.required = Math.max(1, Math.round(st.required))
+  }
+  const res = await adminRpc({
+    action: 'update',
+    table: 'lessons',
+    id: lesson.value.id,
+    data: { content },
+  })
+  busy.value = false
+  if (res.error) { lessonMsg.value = res.error; return }
+  lesson.value.content = content
+  lessonMsg.value = 'Scene steps saved.'
+}
 </script>
 
 <style scoped>
@@ -661,6 +784,13 @@ async function saveRegions() {
 .regions-head { display: flex; align-items: center; justify-content: space-between; }
 .add-btns { display: flex; gap: 6px; }
 .empty { font-family: var(--sans); font-size: 12px; color: var(--text-3); padding: 14px 0; }
+
+.scene-steps { max-width: 720px; }
+.step-card { background: var(--surface); border: 0.5px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+.step-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.step-type { font-family: var(--sans); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--gold); background: rgba(196,145,44,0.1); border-radius: 4px; padding: 2px 7px; }
+.step-label { font-family: var(--sans); font-size: 12.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.step-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .region-row { border: 0.5px solid var(--line); border-radius: 6px; padding: 9px 10px; margin-bottom: 8px; cursor: pointer; background: var(--surface); }
 .region-row.sel { border-color: var(--gold-light); }
 .region-top { display: flex; align-items: center; gap: 8px; }
