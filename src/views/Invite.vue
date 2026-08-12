@@ -50,14 +50,31 @@ async function loadInviter() {
   }
 }
 
+async function copyCodeToClipboard() {
+  // Deferred deep linking: a Universal Link only opens the app if it's
+  // already installed. For a brand-new user, the OS can only redirect to
+  // the store, and nothing hands this URL back to the app after install.
+  // Writing the code to the visitor's own clipboard here lets the app read
+  // it back on first launch (see parseInviteCodeFromClipboard in the app
+  // repo). Requires a user-gesture context, which the download button click
+  // provides.
+  try {
+    await navigator.clipboard.writeText(code.value)
+  } catch {
+    /* no-op — best-effort; app falls back to manual code entry */
+  }
+}
+
 function downloadAndStashCode() {
-  // Persist the code via two mechanisms so the app picks it up post-install:
+  // Persist the code via three mechanisms so the app picks it up post-install:
   //   1. localStorage — read by the website if user returns here after install.
-  //   2. Append `?code=<X>` to the store URL → some attribution providers carry
+  //   2. Clipboard — read by the app on first launch (deferred deep link).
+  //   3. Append `?code=<X>` to the store URL → some attribution providers carry
   //      it through (App Store Connect campaign tokens, Play Console install
   //      referrer). When the universal link works (iOS / Android intent), the
   //      OS opens the app directly with the full URL path including /i/<code>.
   try { localStorage.setItem('fides_invite_code', code.value) } catch { /* no-op */ }
+  void copyCodeToClipboard()
 
   if (platform.value === 'ios') {
     window.location.href = IOS_URL
