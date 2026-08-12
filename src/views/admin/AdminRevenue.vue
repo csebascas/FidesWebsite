@@ -29,6 +29,46 @@
       </template>
     </div>
 
+    <!-- Profit estimate — gross revenue minus store/processor fees -->
+    <div class="section rise" style="--i: 1.5">
+      <h2 class="section-title">Profit Estimate — after store fees</h2>
+      <div v-if="!platformRevenue.length" class="empty-text">Superwall data unavailable</div>
+      <template v-else>
+        <table class="ptable profit">
+          <thead>
+            <tr><th>Platform</th><th>Gross</th><th>Fee rate</th><th>Fees</th><th>Net</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in profitRows" :key="p.platform">
+              <td class="pname">{{ p.label }}</td>
+              <td>{{ money(p.gross) }}</td>
+              <td>
+                <input
+                  type="number" class="rate-input" min="0" max="100" step="0.1"
+                  :value="(feeRates[p.platform] * 100).toFixed(1)"
+                  @input="setRatePct(p.platform, ($event.target as HTMLInputElement).value)"
+                />%
+              </td>
+              <td class="muted">{{ money(p.fees) }}</td>
+              <td class="prate">{{ money(p.net) }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td class="pname">Total</td>
+              <td>{{ money(profitTotal.gross) }}</td>
+              <td></td>
+              <td class="muted">{{ money(profitTotal.fees) }}</td>
+              <td class="prate gold">{{ money(profitTotal.net) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+        <p class="hint">
+          Defaults assume Apple Small Business Program (15%) and Google Play's sub-$1M tier (15%) — both auto-apply at this revenue scale. Web fee rate is an estimate (typical card-processor rate); adjust any rate to match your actual terms. Lifetime gross, not just this period — no cost data (infra, API usage, etc.) is included, this is store/processor fees only.
+        </p>
+      </template>
+    </div>
+
     <div class="rev-grid">
       <div class="rev-col">
         <!-- Acquisition funnel -->
@@ -138,9 +178,41 @@ const eventsByType = ref<Record<string, number>>({})
 const recentEvents = ref<any[]>([])
 const sw = ref<any>(null)
 const paywalls = ref<any>(null)
+const swError = ref<string | null>(null)
+const platformRevenue = ref<{ platform: 'ios' | 'android' | 'web'; revenue_total: number; revenue_week: number }[]>([])
 
-const sourceNote = computed(() =>
-  sw.value ? 'Money and paywall numbers from Superwall (store history) · funnel from Supabase' : 'Superwall unreachable — showing Supabase-only numbers'
+const sourceNote = computed(() => {
+  if (sw.value) return 'Money and paywall numbers from Superwall (store history) · funnel from Supabase'
+  return swError.value
+    ? `Superwall unreachable (${swError.value}) — showing Supabase-only numbers`
+    : 'Superwall unreachable — showing Supabase-only numbers'
+})
+
+// Store/processor fee estimate. iOS and Android default to 15% — both Apple's
+// Small Business Program and Google Play's sub-$1M annual tier land there
+// automatically at this revenue scale, no enrollment action needed once
+// under the threshold. "Web" is a promotional/direct checkout, NOT an app-
+// store purchase, so it owes no Apple/Google commission at all — defaulted
+// to a typical card-processor rate instead, clearly flagged as an estimate.
+// All three are editable in case actual terms differ.
+const PLATFORM_LABELS: Record<string, string> = { ios: 'iOS (App Store)', android: 'Android (Play Store)', web: 'Web (processor)' }
+const feeRates = ref<Record<string, number>>({ ios: 0.15, android: 0.15, web: 0.032 })
+
+function setRatePct(platform: string, value: string) {
+  const pct = Number(value)
+  if (Number.isFinite(pct) && pct >= 0 && pct <= 100) feeRates.value[platform] = pct / 100
+}
+
+const profitRows = computed(() =>
+  platformRevenue.value.map(p => {
+    const rate = feeRates.value[p.platform] ?? 0
+    const fees = p.revenue_total * rate
+    return { platform: p.platform, label: PLATFORM_LABELS[p.platform] ?? p.platform, gross: p.revenue_total, fees, net: p.revenue_total - fees }
+  })
+)
+
+const profitTotal = computed(() =>
+  profitRows.value.reduce((a, r) => ({ gross: a.gross + r.gross, fees: a.fees + r.fees, net: a.net + r.net }), { gross: 0, fees: 0, net: 0 })
 )
 
 function money(n: number | undefined | null): string {
@@ -289,6 +361,8 @@ onMounted(async () => {
       recentEvents.value = d.recent_events || []
       sw.value = d.superwall || null
       paywalls.value = d.paywalls || null
+      swError.value = d.superwall_error || null
+      platformRevenue.value = d.platform_revenue || []
     }
   } catch { /* keep defaults */ }
   loading.value = false
@@ -382,6 +456,16 @@ onMounted(async () => {
 .ptable .pname { text-align: left; color: var(--text); }
 .ptable .has-trials { color: var(--gold-light); font-weight: 600; }
 .ptable .prate { color: var(--text-3); }
+.ptable .prate.gold { color: var(--gold-light); font-weight: 700; }
+.ptable .muted { color: var(--text-3); }
+.ptable.profit tfoot td { border-top: 0.5px solid var(--line); border-bottom: none; padding-top: 10px; font-weight: 600; }
+.rate-input {
+  width: 44px; text-align: right; font-family: var(--sans); font-size: 11.5px; font-variant-numeric: tabular-nums;
+  background: var(--raised); border: 0.5px solid var(--line); border-radius: 4px; color: var(--text);
+  padding: 3px 4px; margin-right: 2px;
+}
+.rate-input:focus { outline: none; border-color: var(--gold); }
+.hint { font-family: var(--sans); font-size: 11px; color: var(--text-3); margin: 12px 0 0; line-height: 1.5; }
 
 /* Event type bars — same as Dashboard bar rows */
 .bar-row { display: flex; align-items: center; gap: 10px; padding: 7px 2px; font-family: var(--sans); font-size: 11.5px; }

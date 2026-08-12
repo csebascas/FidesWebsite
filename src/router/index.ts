@@ -89,6 +89,11 @@ const routes = [
         meta: { title: 'Referrals — Fides Admin', requiresAuth: true },
       },
       {
+        path: 'bible-path',
+        component: () => import('../views/admin/AdminBiblePath.vue'),
+        meta: { title: 'Bible Path — Fides Admin', requiresAuth: true },
+      },
+      {
         path: 'creators',
         component: () => import('../views/admin/AdminCreators.vue'),
         meta: { title: 'Creators — Fides Admin', requiresAuth: true },

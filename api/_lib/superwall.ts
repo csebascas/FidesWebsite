@@ -21,6 +21,58 @@ export interface SuperwallMetrics {
   active_trials: number;
 }
 
+// App-id → platform, for the profit estimator: iOS and Android both go
+// through their store's IAP cut, "web" (promotional checkout, app 43184) is
+// NOT an app-store purchase — it doesn't owe Apple/Google a commission at
+// all — so it needs a different fee model than the two store platforms.
+const PLATFORM_BY_APP_ID: Record<string, 'ios' | 'android' | 'web'> = {
+  '42061': 'ios',
+  '42062': 'android',
+  '43184': 'web',
+};
+
+export interface PlatformRevenue {
+  platform: 'ios' | 'android' | 'web';
+  revenue_total: number;
+  revenue_week: number;
+}
+
+function platformQuery(appIds: string): string {
+  return `
+WITH tx AS (
+  SELECT originalTransactionId, transactionId, applicationId,
+    argMax(price, ts) AS price, max(ts) AS last_ts
+  FROM open_revenue.attributed_events_by_ts_rep FINAL
+  WHERE isSandbox = 0 AND applicationId IN (${appIds})
+    AND ts < now() AND isFamilyShare = 0
+  GROUP BY originalTransactionId, transactionId, applicationId
+)
+SELECT applicationId,
+  round(coalesce(sumIf(price, price > 0), 0), 2) AS revenue_total,
+  round(coalesce(sumIf(price, price > 0 AND last_ts >= now() - INTERVAL 7 DAY), 0), 2) AS revenue_week
+FROM tx
+GROUP BY applicationId
+FORMAT JSONEachRow`;
+}
+
+// Gross revenue split by platform — the store-fee profit estimate needs this
+// because Apple/Google IAP commission doesn't apply to the web checkout at
+// all, so a single blended fee rate over combined revenue would be wrong.
+export async function fetchPlatformRevenue(): Promise<PlatformRevenue[] | null> {
+  const appIds = joinedAppIds();
+  if (!appIds) return null;
+  const rows = await chQuery(platformQuery(appIds));
+  if (!rows) return null;
+  const num = (v: unknown) => (v == null ? 0 : Number(v) || 0);
+  return rows
+    .map((r) => ({
+      platform: PLATFORM_BY_APP_ID[String(r.applicationId)],
+      revenue_total: num(r.revenue_total),
+      revenue_week: num(r.revenue_week),
+    }))
+    .filter((r): r is PlatformRevenue => !!r.platform);
+}
+
 function buildQuery(appIds: string): string {
   return `
 WITH tx AS (
@@ -62,10 +114,22 @@ function joinedAppIds(): string {
     .join(', ');
 }
 
+// Set whenever a query fails, so callers can surface WHY revenue data is
+// missing instead of it silently reading as "$0" — a scoped-wrong API key
+// (403 insufficient_permissions) looks identical to "no revenue" otherwise,
+// and stayed unnoticed for days before being caught this way.
+let lastError: string | null = null;
+export function getSuperwallError(): string | null {
+  return lastError;
+}
+
 // Runs a ClickHouse query and returns all JSONEachRow lines parsed.
 async function chQuery(sql: string): Promise<Record<string, unknown>[] | null> {
   const key = process.env.SUPERWALL_API_KEY;
-  if (!key) return null;
+  if (!key) {
+    lastError = 'SUPERWALL_API_KEY is not set';
+    return null;
+  }
   try {
     const res = await fetch(`https://api.superwall.com/v2/organizations/${ORG_ID}/query`, {
       method: 'POST',
@@ -73,9 +137,12 @@ async function chQuery(sql: string): Promise<Record<string, unknown>[] | null> {
       body: sql,
     });
     if (!res.ok) {
-      console.error('[superwall] query failed', res.status, await res.text());
+      const body = await res.text();
+      console.error('[superwall] query failed', res.status, body);
+      lastError = `Superwall ${res.status}: ${body.slice(0, 200)}`;
       return null;
     }
+    lastError = null;
     const text = await res.text();
     return text
       .trim()
@@ -84,6 +151,7 @@ async function chQuery(sql: string): Promise<Record<string, unknown>[] | null> {
       .map((line) => JSON.parse(line));
   } catch (e) {
     console.error('[superwall] query failed', e);
+    lastError = e instanceof Error ? e.message : 'Superwall request failed';
     return null;
   }
 }

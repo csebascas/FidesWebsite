@@ -254,10 +254,11 @@ async function handleDelete() {
   deleting.value = true
   const userId = deleteTarget.value.id
 
-  // Delete related data first, then user
-  for (const t of ['user_lesson_progress', 'user_track_progress', 'user_saint_unlocks', 'user_badges', 'league_entries']) {
-    await adminRpc({ action: 'delete', table: t, match: { user_id: userId } })
-  }
+  // Delete related data first (independent of each other, so in parallel), then the user row.
+  await Promise.all(
+    ['user_lesson_progress', 'user_track_progress', 'user_saint_unlocks', 'user_badges', 'league_entries']
+      .map(t => adminRpc({ action: 'delete', table: t, match: { user_id: userId } }))
+  )
   const { error } = await adminRpc({ action: 'delete', table: 'users', id: userId })
 
   if (!error) {

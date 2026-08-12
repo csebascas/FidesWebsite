@@ -73,6 +73,7 @@ const STROKE = 'stroke="currentColor" fill="none" stroke-linecap="round" stroke-
 const NAV_TOP = [
   { to: '/d/dashboard', label: 'Dashboard', icon: `<rect x="1.5" y="1.5" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/><rect x="7.9" y="1.5" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/><rect x="1.5" y="7.9" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/><rect x="7.9" y="7.9" width="4.6" height="4.6" rx="1" ${STROKE} stroke-width="1.2"/>` },
   { to: '/d/growth', label: 'Growth', icon: `<path d="M2 11.5L5.5 7.5L8 9.5L12 4" ${STROKE} stroke-width="1.3"/><path d="M9 4h3v3" ${STROKE} stroke-width="1.3"/>` },
+  { to: '/d/bible-path', label: 'Bible Path', icon: `<path d="M7 3.2C5.8 2.2 4 1.8 2 2v8c2 -0.2 3.8 0.2 5 1.2 1.2-1 3-1.4 5-1.2V2c-2 -0.2-3.8 0.2-5 1.2z" ${STROKE} stroke-width="1.1"/><path d="M7 3.2v8" ${STROKE} stroke-width="1.1"/>` },
 ]
 
 const NAV_MONEY = [

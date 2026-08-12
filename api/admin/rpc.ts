@@ -51,6 +51,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (action === 'select') {
+      // PostgREST's select syntax lets `table(*)` embed a related table via
+      // its foreign key — every real caller only ever passes a plain
+      // comma-separated column list, so reject anything that could embed a
+      // table outside ALLOWED_TABLES and read columns the caller shouldn't see.
+      if (typeof select === 'string' && /[()]/.test(select)) {
+        return res.status(400).json({ error: 'select must be a plain column list' });
+      }
       let query = supabase.from(tableName).select(select || '*');
       if (match) {
         for (const [key, val] of Object.entries(match)) {

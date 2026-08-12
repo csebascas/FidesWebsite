@@ -17,10 +17,19 @@ export interface AdminSession {
   exp: number;
 }
 
+let warnedNoDedicatedSecret = false;
+
 function sessionSecret(): string {
   // Dedicated secret if set; otherwise derive from the service-role key so no
-  // extra env var is required to get a valid HMAC key.
-  const base = process.env.ADMIN_SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // extra env var is required to get a valid HMAC key. This fallback ties the
+  // session-cookie signing key to the DB key — set ADMIN_SESSION_SECRET (any
+  // long random string) in the Vercel project env to decouple them.
+  const dedicated = process.env.ADMIN_SESSION_SECRET;
+  if (!dedicated && !warnedNoDedicatedSecret) {
+    warnedNoDedicatedSecret = true;
+    console.warn('[auth] ADMIN_SESSION_SECRET not set — signing admin sessions with SUPABASE_SERVICE_ROLE_KEY. Set a dedicated secret in Vercel env vars.');
+  }
+  const base = dedicated || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!base) throw new Error('No ADMIN_SESSION_SECRET or SUPABASE_SERVICE_ROLE_KEY set');
   return base;
 }
