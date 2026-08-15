@@ -7,7 +7,7 @@
     <div class="statstrip">
       <div class="stat"><span class="n">{{ loading ? '—' : totals.creators }}</span><span class="l">Creators</span></div>
       <div class="stat"><span class="n">{{ loading ? '—' : totals.signups }}</span><span class="l">Signups</span></div>
-      <div class="stat"><span class="n gold">{{ loading ? '—' : totals.joined }}</span><span class="l">Joined Pro</span></div>
+      <div class="stat"><span class="n">{{ loading ? '—' : totals.joined }}</span><span class="l">Started sub</span></div>
       <div class="stat"><span class="n gold">{{ loading ? '—' : totals.paid }}</span><span class="l">Paid</span></div>
     </div>
 
@@ -54,10 +54,11 @@
             <th>Creator</th>
             <th>Code / link</th>
             <th class="num">Signups</th>
-            <th class="num">Joined Pro</th>
+            <th class="num" title="Referred users whose free Pro window has ended">Free over</th>
+            <th class="num" title="Started a store subscription (trial or paid)">Started</th>
             <th class="num">Trials</th>
-            <th class="num">Paid</th>
-            <th class="num">Conv.</th>
+            <th class="num" title="Actually charged money — a paid renewal or a direct paid purchase">Paid</th>
+            <th class="num" title="Paid ÷ signups">Conv.</th>
             <th>Linked user</th>
             <th></th>
           </tr>
@@ -79,10 +80,11 @@
                 <button class="copy-btn" @click="copyLink(row.code)">{{ copied === row.code ? 'Copied' : 'Copy link' }}</button>
               </td>
               <td class="num">{{ num(row.signups) }}</td>
-              <td class="num gold">{{ num(row.joined_pro) }}</td>
+              <td class="num">{{ num(row.free_window_ended) }}</td>
+              <td class="num">{{ num(row.joined_pro) }}</td>
               <td class="num">{{ num(row.trials) }}</td>
               <td class="num gold">{{ num(row.paid_conversions) }}</td>
-              <td class="num">{{ row.pct_joined_pro != null ? row.pct_joined_pro + '%' : '—' }}</td>
+              <td class="num">{{ row.pct_paid != null ? row.pct_paid + '%' : '—' }}</td>
               <td class="link-cell">
                 <template v-if="linkingCode === row.code">
                   <div class="link-edit">
@@ -140,7 +142,7 @@
 
             <!-- Inline edit panel -->
             <tr v-if="editingCode === row.code" class="detail-row">
-              <td colspan="9">
+              <td colspan="10">
                 <div class="edit-panel">
                   <div class="edit-head">
                     <span class="edit-title">Edit creator</span>
@@ -177,7 +179,7 @@
 
             <!-- Expanded detail: linked user + referred list + monthly tracker -->
             <tr v-if="expanded === row.code" class="detail-row">
-              <td colspan="9">
+              <td colspan="10">
                 <!-- Linked user -->
                 <div class="detail-link">
                   <span class="dl-label">Linked creator account</span>
@@ -330,7 +332,7 @@
             </tr>
           </template>
           <tr v-if="!loading && rows.length === 0">
-            <td colspan="9" class="empty">No creator codes yet. Create one above.</td>
+            <td colspan="10" class="empty">No creator codes yet. Create one above.</td>
           </tr>
         </tbody>
       </table>
@@ -560,7 +562,18 @@ async function toggleExpand(code: string) {
 }
 
 function statusLabel(s: string): string {
-  return s === 'paid' ? 'Paid' : s === 'trial' ? 'Trial' : 'Signed up'
+  switch (s) {
+    case 'paid':
+      return 'Paid'
+    case 'trial':
+      return 'Trial'
+    case 'on_grant':
+      return 'On free Pro'
+    case 'lapsed':
+      return 'Free ended'
+    default:
+      return 'Signed up'
+  }
 }
 
 function formatDate(d: string): string {
@@ -1519,6 +1532,14 @@ tr.row-open td {
 .status-pill.paid {
   color: #34c759;
   background: rgba(52, 199, 89, 0.12);
+}
+.status-pill.on_grant {
+  color: #5aa9e6;
+  background: rgba(90, 169, 230, 0.12);
+}
+.status-pill.lapsed {
+  color: var(--text-3);
+  background: rgba(255, 107, 94, 0.08);
 }
 
 @media (max-width: 640px) {

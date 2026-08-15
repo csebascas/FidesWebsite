@@ -40,6 +40,7 @@
             <span class="fl-pct">{{ pct(s.value, h.partner_referred) }}%</span>
           </div>
         </div>
+        <p class="hint">Partner-referred users get a free Pro grant on signup, so "Started trial / sub" and "Converted to paying" count real App Store activity only — never the free grant. "Converted to paying" = actually charged (a paid renewal or a direct paid purchase); an active trial counts under "Started", not paying.</p>
       </div>
 
       <!-- Best partners -->
@@ -51,10 +52,12 @@
               <tr>
                 <th>Partner</th>
                 <th class="num">Signups</th>
-                <th class="num">Joined Pro</th>
+                <th class="num" title="Free Pro window ended">Free over</th>
+                <th class="num" title="Started a store subscription (trial or paid)">Started</th>
                 <th class="num">Trials</th>
-                <th class="num">Paid</th>
-                <th class="num">Conv %</th>
+                <th class="num" title="Actually charged money">Paid</th>
+                <th class="num" title="Churned after paying">Churned</th>
+                <th class="num" title="Paid ÷ signups">Conv %</th>
                 <th class="num">Stayed</th>
                 <th class="num">Avg Pro left</th>
                 <th>Status</th>
@@ -67,15 +70,17 @@
                   <span v-if="p.creator_handle" class="creator-handle">{{ p.creator_handle }}</span>
                 </td>
                 <td class="num">{{ p.signups }}</td>
+                <td class="num">{{ p.window_ended }}</td>
                 <td class="num">{{ p.joined_pro }}</td>
                 <td class="num">{{ p.trials }}</td>
                 <td class="num gold">{{ p.paid_conversions }}</td>
+                <td class="num">{{ p.churned }}</td>
                 <td class="num">{{ p.pct_paid != null ? p.pct_paid + '%' : '—' }}</td>
                 <td class="num">{{ p.stayed }}</td>
                 <td class="num">{{ p.avg_pro_days_left }}d</td>
                 <td><span class="status-pill" :class="p.active ? 'on' : 'off'">{{ p.active ? 'Active' : 'Paused' }}</span></td>
               </tr>
-              <tr v-if="!partners.length"><td colspan="9" class="empty">No partner codes yet.</td></tr>
+              <tr v-if="!partners.length"><td colspan="11" class="empty">No partner codes yet.</td></tr>
             </tbody>
           </table>
         </div>
@@ -124,8 +129,8 @@
                 <th>Code</th>
                 <th>Redeemed</th>
                 <th class="num">Pro days granted</th>
-                <th class="num">Days left</th>
-                <th>Paid?</th>
+                <th class="num">Grant days left</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
@@ -141,7 +146,7 @@
                   <span v-if="u.days_left === null" class="lifetime">Lifetime</span>
                   <span v-else :class="daysLeftClass(u.days_left)">{{ u.days_left }}d</span>
                 </td>
-                <td><span class="status-pill" :class="u.paid ? 'paid' : 'off'">{{ u.paid ? 'Paid' : '—' }}</span></td>
+                <td><span class="status-pill" :class="u.status">{{ statusLabel(u.status) }}</span></td>
               </tr>
               <tr v-if="!expiring.length"><td colspan="6" class="empty">No partner-referred users yet.</td></tr>
             </tbody>
@@ -180,8 +185,10 @@ const partnerFunnel = computed(() => {
   const d = headline.value
   return [
     { key: 'referred',      label: 'Referred by a partner', value: d.partner_referred },
-    { key: 'started_pro',    label: 'Started Pro / trial', value: d.partner_started_pro },
-    { key: 'paid',           label: 'Converted to paid Pro', value: d.partner_paid },
+    { key: 'window_ended',   label: 'Free Pro window ended', value: d.partner_window_ended },
+    { key: 'started_pro',    label: 'Started trial / sub', value: d.partner_started_pro },
+    { key: 'paid',           label: 'Converted to paying', value: d.partner_paid },
+    { key: 'churned',        label: 'Churned after paying', value: d.partner_churned },
     { key: 'stayed',         label: 'Stayed on app after Pro', value: d.partner_stayed },
   ]
 })
@@ -194,6 +201,21 @@ function pct(v: any, total: number): number {
 function formatDate(d: string): string {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function statusLabel(s: string): string {
+  switch (s) {
+    case 'paid':
+      return 'Paid'
+    case 'trial':
+      return 'Trial'
+    case 'on_grant':
+      return 'On free Pro'
+    case 'lapsed':
+      return 'Free ended'
+    default:
+      return 'Signed up'
+  }
 }
 
 function daysLeftClass(d: number): string {
@@ -258,7 +280,10 @@ onMounted(async () => {
 .status-pill { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 100px; white-space: nowrap; }
 .status-pill.on { color: #34c759; background: rgba(52,199,89,0.12); }
 .status-pill.off { color: var(--text-3); background: var(--surface); }
-.status-pill.paid { color: var(--gold-light); background: rgba(196,145,44,0.12); }
+.status-pill.paid { color: #34c759; background: rgba(52,199,89,0.12); }
+.status-pill.trial { color: var(--gold-light); background: rgba(196,145,44,0.12); }
+.status-pill.on_grant { color: #5aa9e6; background: rgba(90,169,230,0.12); }
+.status-pill.lapsed { color: var(--text-3); background: rgba(255,107,94,0.08); }
 
 .lifetime { color: var(--gold-light); font-weight: 600; }
 .warn-text { color: var(--streak); font-weight: 600; }
