@@ -38,14 +38,20 @@ export interface PlatformRevenue {
 }
 
 function platformQuery(appIds: string): string {
+  // `name` MUST be in the group key. Google Play reports each purchase twice: the
+  // priced `initial_purchase` (source=integration) and a $0 SDK `transaction_complete`
+  // with a LATER timestamp. Grouping by (orig, txn) alone collapses them, and
+  // argMax(price, ts) then picks the $0 SDK row — zeroing out all Android revenue
+  // (and undercounting iOS). Keying by name keeps them separate so the priced row
+  // survives. Matches buildQuery below and Superwall's documented revenue dedup.
   return `
 WITH tx AS (
-  SELECT originalTransactionId, transactionId, applicationId,
+  SELECT originalTransactionId, transactionId, applicationId, name,
     argMax(price, ts) AS price, max(ts) AS last_ts
   FROM open_revenue.attributed_events_by_ts_rep FINAL
   WHERE isSandbox = 0 AND applicationId IN (${appIds})
     AND ts < now() AND isFamilyShare = 0
-  GROUP BY originalTransactionId, transactionId, applicationId
+  GROUP BY originalTransactionId, transactionId, applicationId, name
 )
 SELECT applicationId,
   round(coalesce(sumIf(price, price > 0), 0), 2) AS revenue_total,
