@@ -5,11 +5,37 @@
 
     <div v-if="loading" class="note">Loading…</div>
     <div v-else-if="error" class="note err">{{ error }}</div>
-    <div v-else-if="!funnel.length" class="note">No offers sent yet. Once <code>send-daily-engagement</code> sends win-back offers to lapsed users, they show up here.</div>
 
     <template v-else>
+      <!-- Offer settings (editable, applies next hourly send, no app deploy) -->
+      <div class="section">
+        <h2 class="section-title">Offer settings</h2>
+        <div class="cfg">
+          <label class="cfg-row"><span class="cfg-l">Enabled</span><input type="checkbox" v-model="config.enabled" /></label>
+          <label class="cfg-row"><span class="cfg-l">Window (hours)</span><input type="number" min="1" class="cfg-in" v-model.number="config.window_hours" /><span class="cfg-d">{{ (config.window_hours / 24).toFixed(1) }} days · the paywall countdown length</span></label>
+          <label class="cfg-row"><span class="cfg-l">Cooldown (days)</span><input type="number" min="0" class="cfg-in" v-model.number="config.cooldown_days" /><span class="cfg-d">min days between offers to the same user</span></label>
+          <div class="cfg-actions"><button class="cfg-save" :disabled="saving" @click="saveConfig">{{ saving ? 'Saving…' : 'Save' }}</button><span v-if="savedMsg" class="cfg-msg">{{ savedMsg }}</span></div>
+        </div>
+        <p class="hint">Changes take effect on the next hourly run of <code>send-daily-engagement</code>. No app deploy needed.</p>
+      </div>
+
+      <!-- Recent sends · who got the offer -->
+      <div class="section" v-if="sends.length">
+        <h2 class="section-title">Recent sends · who got the offer</h2>
+        <div class="table-scroll">
+          <table class="tbl">
+            <thead><tr><th>User</th><th>Offer</th><th>Placement</th><th>Sent</th></tr></thead>
+            <tbody>
+              <tr v-for="(s, i) in sends" :key="i"><td class="you">{{ s.name }}</td><td>{{ s.offer_key }}</td><td class="muted">{{ s.placement }}</td><td class="muted">{{ fmtDateTime(s.occurred_at) }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div v-if="!funnel.length" class="note">No offers sent yet. Once <code>send-daily-engagement</code> sends win-back offers, the funnel shows here.</div>
+
       <!-- Headline totals -->
-      <div class="statstrip">
+      <div class="statstrip" v-if="funnel.length">
         <div class="stat"><span class="n">{{ totals.sent }}</span><span class="l">Sent</span><span class="d">lapsed users nudged</span></div>
         <div class="stat"><span class="n">{{ totals.tapped }}</span><span class="l">Tapped</span><span class="d">{{ pct(totals.tapped, totals.sent) }}% of sent</span></div>
         <div class="stat"><span class="n gold">{{ totals.converted }}</span><span class="l">Re-subscribed</span><span class="d">from the deal</span></div>
@@ -17,7 +43,7 @@
       </div>
 
       <!-- Per-offer funnel -->
-      <div class="section">
+      <div class="section" v-if="funnel.length">
         <h2 class="section-title">By offer</h2>
         <div class="table-scroll">
           <table class="tbl">
@@ -104,6 +130,14 @@ const loading = ref(true)
 const error = ref('')
 const funnel = ref<FunnelRow[]>([])
 const conversions = ref<ConversionRow[]>([])
+const sends = ref<Array<{ name: string; offer_key: string; placement: string; occurred_at: string }>>([])
+const config = ref<{ enabled: boolean; window_hours: number; cooldown_days: number }>({
+  enabled: true,
+  window_hours: 72,
+  cooldown_days: 14,
+})
+const saving = ref(false)
+const savedMsg = ref('')
 
 const totals = computed(() => {
   const t = { sent: 0, tapped: 0, converted: 0 }
@@ -144,6 +178,42 @@ function ttc(tapped: string | null, purchased: string | null): string {
   const rem = hrs % 24
   return rem ? `${days}d ${rem}h` : `${days}d`
 }
+function fmtDateTime(s: string | null): string {
+  if (!s) return '—'
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+async function saveConfig() {
+  saving.value = true
+  savedMsg.value = ''
+  try {
+    const res = await fetch('/api/admin/rpc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update',
+        table: 'app_config',
+        match: { key: 'winback_offer' },
+        data: {
+          value: {
+            enabled: !!config.value.enabled,
+            window_hours: Number(config.value.window_hours) || 72,
+            cooldown_days: Number(config.value.cooldown_days) || 0,
+          },
+          updated_at: new Date().toISOString(),
+        },
+      }),
+    })
+    savedMsg.value = res.ok ? 'Saved' : `Error: ${(await res.json().catch(() => ({}))).error || res.status}`
+  } catch {
+    savedMsg.value = 'Network error'
+  } finally {
+    saving.value = false
+    setTimeout(() => (savedMsg.value = ''), 3000)
+  }
+}
 
 onMounted(async () => {
   try {
@@ -159,6 +229,8 @@ onMounted(async () => {
     const d = await res.json()
     funnel.value = d.funnel ?? []
     conversions.value = d.conversions ?? []
+    sends.value = d.sends ?? []
+    if (d.config) config.value = { ...config.value, ...d.config }
   } catch {
     error.value = 'Network error.'
   } finally {
@@ -202,4 +274,14 @@ onMounted(async () => {
 .tbl td.cell.mid { background: rgba(196,145,44,0.16); color: var(--gold-light); }
 .tbl td.cell.bad { background: rgba(212,103,58,0.16); color: #e0805c; }
 .bnote { color: var(--text-3); font-size: 11px; }
+
+.cfg { display: flex; flex-direction: column; gap: 12px; max-width: 540px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+.cfg-row { display: flex; align-items: center; gap: 12px; font-family: var(--sans); font-size: 14px; }
+.cfg-l { width: 120px; color: var(--text-2); }
+.cfg-in { width: 90px; background: rgba(0,0,0,0.3); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; color: var(--text); font-family: var(--sans); font-size: 14px; }
+.cfg-d { color: var(--text-3); font-size: 12px; }
+.cfg-actions { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.cfg-save { background: var(--gold); color: #1A1206; border: 0; border-radius: 6px; font-family: var(--sans); font-size: 14px; font-weight: 600; padding: 9px 18px; cursor: pointer; }
+.cfg-save:disabled { opacity: 0.6; cursor: default; }
+.cfg-msg { font-family: var(--sans); font-size: 13px; color: var(--text-3); }
 </style>

@@ -98,17 +98,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // migration isn't live in prod yet (the tab shows a friendly error state).
     if (view === 'offers') {
       const data = await cached('offers', async () => {
-        const [funnel, conversions] = await Promise.all([
+        const [funnel, conversions, sent, cfg] = await Promise.all([
           supabase.from('offer_funnel').select('*'),
           supabase
             .from('offer_conversions')
             .select('*')
             .order('purchased_at', { ascending: false })
             .limit(200),
+          supabase
+            .from('offer_events')
+            .select('user_id, offer_key, placement, occurred_at')
+            .eq('event', 'sent')
+            .order('occurred_at', { ascending: false })
+            .limit(100),
+          supabase.from('app_config').select('value').eq('key', 'winback_offer').maybeSingle(),
         ]);
         if (funnel.error) throw funnel.error;
         if (conversions.error) throw conversions.error;
-        return { funnel: funnel.data ?? [], conversions: conversions.data ?? [] };
+        // Resolve display names for the "who got it" list (offer_events only
+        // stores user_id).
+        const sentRows = (sent.data ?? []) as Array<{ user_id: string; offer_key: string; placement: string; occurred_at: string }>;
+        const ids = [...new Set(sentRows.map((r) => r.user_id))];
+        const names: Record<string, string> = {};
+        if (ids.length) {
+          const { data: us } = await supabase.from('users').select('id, username, display_name').in('id', ids);
+          for (const u of (us ?? []) as Array<{ id: string; username: string | null; display_name: string | null }>) {
+            names[u.id] = u.username || u.display_name || String(u.id).slice(0, 8);
+          }
+        }
+        const sends = sentRows.map((r) => ({
+          name: names[r.user_id] || String(r.user_id).slice(0, 8),
+          offer_key: r.offer_key,
+          placement: r.placement,
+          occurred_at: r.occurred_at,
+        }));
+        return {
+          funnel: funnel.data ?? [],
+          conversions: conversions.data ?? [],
+          sends,
+          config: cfg.data?.value ?? { enabled: true, window_hours: 72, cooldown_days: 14 },
+        };
       });
       res.setHeader('Cache-Control', 'private, max-age=30');
       return res.status(200).json(data);
