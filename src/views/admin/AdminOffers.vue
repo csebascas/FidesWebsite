@@ -19,14 +19,27 @@
         <p class="hint">Changes take effect on the next hourly run of <code>send-daily-engagement</code>. No app deploy needed.</p>
       </div>
 
+      <div class="section">
+        <h2 class="section-title">Send to specific users</h2>
+        <div class="manual-send">
+          <label for="offer-user-ids" class="manual-label">User IDs</label>
+          <textarea id="offer-user-ids" v-model="manualUserIds" rows="4" placeholder="One UUID per line, or comma-separated" />
+          <div class="cfg-actions">
+            <button class="cfg-save" :disabled="sending || !manualUserIds.trim()" @click="sendManualOffers">{{ sending ? 'Sending…' : 'Send offer' }}</button>
+            <span v-if="sendMsg" class="cfg-msg">{{ sendMsg }}</span>
+          </div>
+        </div>
+        <p class="hint">Manual sends are blocked until Monday, August 17 (Detroit time), respect the user’s offer-notification preference, and appear below with their tap status.</p>
+      </div>
+
       <!-- Recent sends · who got the offer -->
       <div class="section" v-if="sends.length">
         <h2 class="section-title">Recent sends · who got the offer</h2>
         <div class="table-scroll">
           <table class="tbl">
-            <thead><tr><th>User</th><th>Offer</th><th>Placement</th><th>Sent</th></tr></thead>
+            <thead><tr><th>User</th><th>Offer</th><th>Placement</th><th>Sent</th><th>Tap</th></tr></thead>
             <tbody>
-              <tr v-for="(s, i) in sends" :key="i"><td class="you">{{ s.name }}</td><td>{{ s.offer_key }}</td><td class="muted">{{ s.placement }}</td><td class="muted">{{ fmtDateTime(s.occurred_at) }}</td></tr>
+              <tr v-for="(s, i) in sends" :key="i"><td class="you">{{ s.name }}</td><td>{{ s.offer_key }}</td><td class="muted">{{ s.placement }}</td><td class="muted">{{ fmtDateTime(s.occurred_at) }}</td><td class="muted">{{ s.tapped_at ? fmtDateTime(s.tapped_at) : 'Not tapped' }}</td></tr>
             </tbody>
           </table>
         </div>
@@ -130,14 +143,18 @@ const loading = ref(true)
 const error = ref('')
 const funnel = ref<FunnelRow[]>([])
 const conversions = ref<ConversionRow[]>([])
-const sends = ref<Array<{ name: string; offer_key: string; placement: string; occurred_at: string }>>([])
-const config = ref<{ enabled: boolean; window_hours: number; cooldown_days: number }>({
+const sends = ref<Array<{ name: string; offer_key: string; placement: string; occurred_at: string; tapped_at: string | null }>>([])
+const config = ref<{ enabled: boolean; window_hours: number; cooldown_days: number; starts_at: string }>({
   enabled: true,
   window_hours: 72,
   cooldown_days: 14,
+  starts_at: '2026-08-17T00:00:00-04:00',
 })
 const saving = ref(false)
 const savedMsg = ref('')
+const manualUserIds = ref('')
+const sending = ref(false)
+const sendMsg = ref('')
 
 const totals = computed(() => {
   const t = { sent: 0, tapped: 0, converted: 0 }
@@ -201,6 +218,7 @@ async function saveConfig() {
             enabled: !!config.value.enabled,
             window_hours: Number(config.value.window_hours) || 72,
             cooldown_days: Number(config.value.cooldown_days) || 0,
+            starts_at: config.value.starts_at,
           },
           updated_at: new Date().toISOString(),
         },
@@ -215,9 +233,36 @@ async function saveConfig() {
   }
 }
 
-onMounted(async () => {
+async function sendManualOffers() {
+  sending.value = true
+  sendMsg.value = ''
   try {
-    const res = await fetch('/api/dashboard?view=offers')
+    const userIds = manualUserIds.value.split(/[\s,]+/).filter(Boolean)
+    const res = await fetch('/api/admin/rpc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'send_offer', userIds }),
+    })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      sendMsg.value = `Error: ${body.error || res.status}`
+      return
+    }
+    sendMsg.value = `Sent to ${body.sent}; skipped ${body.skipped}.`
+    manualUserIds.value = ''
+    await loadOffers(true)
+  } catch {
+    sendMsg.value = 'Network error'
+  } finally {
+    sending.value = false
+  }
+}
+
+async function loadOffers(refresh = false) {
+  loading.value = true
+  error.value = ''
+  try {
+    const res = await fetch(`/api/dashboard?view=offers${refresh ? `&refresh=${Date.now()}` : ''}`)
     if (!res.ok) {
       error.value =
         res.status === 500
@@ -236,7 +281,9 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(loadOffers)
 </script>
 
 <style scoped>
@@ -284,4 +331,7 @@ onMounted(async () => {
 .cfg-save { background: var(--gold); color: #1A1206; border: 0; border-radius: 6px; font-family: var(--sans); font-size: 14px; font-weight: 600; padding: 9px 18px; cursor: pointer; }
 .cfg-save:disabled { opacity: 0.6; cursor: default; }
 .cfg-msg { font-family: var(--sans); font-size: 13px; color: var(--text-3); }
+.manual-send { display: flex; flex-direction: column; gap: 10px; max-width: 540px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+.manual-label { font-family: var(--sans); font-size: 14px; color: var(--text-2); }
+.manual-send textarea { resize: vertical; min-height: 74px; background: rgba(0,0,0,0.3); border: 1px solid var(--line); border-radius: 6px; padding: 9px; color: var(--text); font-family: var(--mono, ui-monospace, monospace); font-size: 12px; }
 </style>

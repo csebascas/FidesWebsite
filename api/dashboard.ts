@@ -97,8 +97,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Direct .from() selects — no RPC needed. Errors if the offer_tracking
     // migration isn't live in prod yet (the tab shows a friendly error state).
     if (view === 'offers') {
-      const data = await cached('offers', async () => {
-        const [funnel, conversions, sent, cfg] = await Promise.all([
+      const refresh = typeof req.query.refresh === 'string' ? req.query.refresh : '';
+      const data = await cached(refresh ? `offers:${refresh}` : 'offers', async () => {
+        const [funnel, conversions, sent, taps, cfg] = await Promise.all([
           supabase.from('offer_funnel').select('*'),
           supabase
             .from('offer_conversions')
@@ -111,6 +112,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .eq('event', 'sent')
             .order('occurred_at', { ascending: false })
             .limit(100),
+          supabase
+            .from('offer_events')
+            .select('user_id, offer_key, occurred_at')
+            .eq('event', 'tapped')
+            .order('occurred_at', { ascending: false })
+            .limit(500),
           supabase.from('app_config').select('value').eq('key', 'winback_offer').maybeSingle(),
         ]);
         if (funnel.error) throw funnel.error;
@@ -118,6 +125,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // Resolve display names for the "who got it" list (offer_events only
         // stores user_id).
         const sentRows = (sent.data ?? []) as Array<{ user_id: string; offer_key: string; placement: string; occurred_at: string }>;
+        const latestTapByUserOffer = new Map<string, string>();
+        for (const tap of (taps.data ?? []) as Array<{ user_id: string; offer_key: string; occurred_at: string }>) {
+          const key = `${tap.user_id}:${tap.offer_key}`;
+          if (!latestTapByUserOffer.has(key)) latestTapByUserOffer.set(key, tap.occurred_at);
+        }
         const ids = [...new Set(sentRows.map((r) => r.user_id))];
         const names: Record<string, string> = {};
         if (ids.length) {
@@ -131,12 +143,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           offer_key: r.offer_key,
           placement: r.placement,
           occurred_at: r.occurred_at,
+          tapped_at: latestTapByUserOffer.get(`${r.user_id}:${r.offer_key}`) ?? null,
         }));
         return {
           funnel: funnel.data ?? [],
           conversions: conversions.data ?? [],
           sends,
-          config: cfg.data?.value ?? { enabled: true, window_hours: 72, cooldown_days: 14 },
+          config: cfg.data?.value ?? { enabled: false, window_hours: 72, cooldown_days: 14 },
         };
       });
       res.setHeader('Cache-Control', 'private, max-age=30');
