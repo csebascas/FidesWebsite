@@ -90,6 +90,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(data);
     }
 
+    // ?view=offers serves the Offers tab: the win-back / notification-offer
+    // funnel (sent -> tapped -> converted) from the offer_funnel +
+    // offer_conversions views. Those views are granted to service_role only, so
+    // they must be read here (server-side), never from the anon browser client.
+    // Direct .from() selects — no RPC needed. Errors if the offer_tracking
+    // migration isn't live in prod yet (the tab shows a friendly error state).
+    if (view === 'offers') {
+      const data = await cached('offers', async () => {
+        const [funnel, conversions] = await Promise.all([
+          supabase.from('offer_funnel').select('*'),
+          supabase
+            .from('offer_conversions')
+            .select('*')
+            .order('purchased_at', { ascending: false })
+            .limit(200),
+        ]);
+        if (funnel.error) throw funnel.error;
+        if (conversions.error) throw conversions.error;
+        return { funnel: funnel.data ?? [], conversions: conversions.data ?? [] };
+      });
+      res.setHeader('Cache-Control', 'private, max-age=30');
+      return res.status(200).json(data);
+    }
+
     const data = await cached('default', async () => {
       const { data, error } = await supabase.rpc('admin_dashboard_data');
       if (error) throw error;
