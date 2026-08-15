@@ -54,9 +54,8 @@
             <th>Creator</th>
             <th>Code / link</th>
             <th class="num">Signups</th>
-            <th class="num" title="Referred users whose free Pro window has ended">Free over</th>
+            <th class="where">Where they are now</th>
             <th class="num" title="Started a store subscription (trial or paid)">Started</th>
-            <th class="num">Trials</th>
             <th class="num" title="Actually charged money — a paid renewal or a direct paid purchase">Paid</th>
             <th class="num" title="Paid ÷ signups">Conv.</th>
             <th>Linked user</th>
@@ -80,9 +79,15 @@
                 <button class="copy-btn" @click="copyLink(row.code)">{{ copied === row.code ? 'Copied' : 'Copy link' }}</button>
               </td>
               <td class="num">{{ num(row.signups) }}</td>
-              <td class="num">{{ num(row.free_window_ended) }}</td>
+              <td>
+                <div class="stack" :title="stackTitle(row)">
+                  <span class="sg" :style="{ width: pctOf(row.on_grant, row.signups) + '%' }"></span>
+                  <span class="st" :style="{ width: pctOf(row.trials, row.signups) + '%' }"></span>
+                  <span class="sp" :style="{ width: pctOf(row.paid_conversions, row.signups) + '%' }"></span>
+                  <span class="sw" :style="{ width: pctOf(row.lapsed, row.signups) + '%' }"></span>
+                </div>
+              </td>
               <td class="num">{{ num(row.joined_pro) }}</td>
-              <td class="num">{{ num(row.trials) }}</td>
               <td class="num gold">{{ num(row.paid_conversions) }}</td>
               <td class="num">{{ row.pct_paid != null ? row.pct_paid + '%' : '—' }}</td>
               <td class="link-cell">
@@ -142,7 +147,7 @@
 
             <!-- Inline edit panel -->
             <tr v-if="editingCode === row.code" class="detail-row">
-              <td colspan="10">
+              <td colspan="9">
                 <div class="edit-panel">
                   <div class="edit-head">
                     <span class="edit-title">Edit creator</span>
@@ -179,7 +184,7 @@
 
             <!-- Expanded detail: linked user + referred list + monthly tracker -->
             <tr v-if="expanded === row.code" class="detail-row">
-              <td colspan="10">
+              <td colspan="9">
                 <!-- Linked user -->
                 <div class="detail-link">
                   <span class="dl-label">Linked creator account</span>
@@ -332,10 +337,16 @@
             </tr>
           </template>
           <tr v-if="!loading && rows.length === 0">
-            <td colspan="10" class="empty">No creator codes yet. Create one above.</td>
+            <td colspan="9" class="empty">No creator codes yet. Create one above.</td>
           </tr>
         </tbody>
       </table>
+      <div class="legend">
+        <span><i class="sg"></i>On free Pro now</span>
+        <span><i class="st"></i>In trial</span>
+        <span><i class="sp"></i>Paid</span>
+        <span><i class="sw"></i>Lapsed (free ended, no purchase)</span>
+      </div>
     </div>
   </div>
 </template>
@@ -596,6 +607,15 @@ const totals = computed(() =>
 function num(v: any): number {
   const n = Number(v)
   return Number.isFinite(n) ? n : 0
+}
+
+function pctOf(v: any, total: any): number {
+  const t = num(total)
+  return t ? Math.round((num(v) / t) * 100) : 0
+}
+
+function stackTitle(row: any): string {
+  return `On free Pro ${num(row.on_grant)} · In trial ${num(row.trials)} · Paid ${num(row.paid_conversions)} · Lapsed ${num(row.lapsed)}`
 }
 
 async function load() {
@@ -1529,6 +1549,36 @@ tr.row-open td {
   color: var(--gold-light);
   background: rgba(196, 145, 44, 0.12);
 }
+/* ── "Where they are now" stacked bar ── */
+.data-table th.where { width: 180px; }
+.stack {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg, #0c0c0c);
+  width: 170px;
+}
+.stack span { display: block; height: 100%; }
+.stack .sg { background: #5a93c4; }
+.stack .st { background: var(--gold); }
+.stack .sp { background: #34c759; }
+.stack .sw { background: #d4673a; opacity: 0.7; }
+.legend {
+  display: flex;
+  gap: 16px;
+  margin: 14px 2px 0;
+  font-family: var(--sans);
+  font-size: 11px;
+  color: var(--text-3);
+  flex-wrap: wrap;
+}
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.legend .sg { background: #5a93c4; }
+.legend .st { background: var(--gold); }
+.legend .sp { background: #34c759; }
+.legend .sw { background: #d4673a; opacity: 0.7; }
+
 .status-pill.paid {
   color: #34c759;
   background: rgba(52, 199, 89, 0.12);
