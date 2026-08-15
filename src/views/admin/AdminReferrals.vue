@@ -10,8 +10,9 @@
       <!-- One-line read on the whole thing -->
       <p class="insight">
         {{ totalReferred }} people came in through referrals and nearly all took their free Pro.
-        <b>{{ totalActivated }} did a lesson</b>, but
+        <b>{{ totalActivated }} did a lesson</b> and <b>{{ totalActive }} are still active this fortnight</b>, but
         <span :class="totalPaid ? 'good' : 'bad'">{{ totalPaid }} {{ totalPaid === 1 ? 'has' : 'have' }} converted to a paid subscription</span>.
+        The referrals are landing on engagement — the gap is getting them to pay.
       </p>
 
       <!-- Headline KPIs -->
@@ -25,8 +26,8 @@
           <span class="sub">did at least one lesson</span>
         </div>
         <div class="kpi">
-          <span class="n">{{ totalStarted }}</span><span class="l">Started a trial / sub</span>
-          <span class="sub">real App Store / Play activity</span>
+          <span class="n good">{{ totalActive }}</span><span class="l">Still active</span>
+          <span class="sub">did a lesson in the last 14 days</span>
         </div>
         <div class="kpi">
           <span class="n" :class="totalPaid ? 'good' : 'warn'">{{ totalPaid }}</span><span class="l">Paid conversions</span>
@@ -151,7 +152,7 @@ const numv = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : 0)
 
 const totalReferred = computed(() => numv(h.value.friend_referred) + numv(h.value.partner_referred))
 const totalActivated = computed(() => numv(h.value.friend_activated) + numv(h.value.partner_activated))
-const totalStarted = computed(() => numv(h.value.friend_started_pro) + numv(h.value.partner_started_pro))
+const totalActive = computed(() => numv(h.value.friend_active) + numv(h.value.partner_active))
 const totalPaid = computed(() => numv(h.value.friend_paid) + numv(h.value.partner_paid))
 
 function pctOf(v: any, total: any): number {
