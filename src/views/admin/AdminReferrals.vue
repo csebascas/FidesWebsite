@@ -1,208 +1,189 @@
 <template>
   <div class="referrals">
     <h1 class="page-title">Referrals</h1>
-    <p class="subtitle">Friend referrals and partner/creator referrals — how many users came in, converted to Pro, and stayed on the app.</p>
+    <p class="subtitle">Where referred users are in the funnel — from free Pro to an actual paid subscription.</p>
 
     <div v-if="loading" class="note">Loading…</div>
     <div v-else-if="error" class="note err">{{ error }}</div>
 
     <template v-else>
-      <!-- Headline stats -->
-      <div class="statstrip">
-        <div class="stat"><span class="n">{{ h.friend_referred }}</span><span class="l">Friend referred</span></div>
-        <div class="stat"><span class="n">{{ h.partner_referred }}</span><span class="l">Partner referred</span></div>
-        <div class="stat"><span class="n gold">{{ h.friend_paid + h.partner_paid }}</span><span class="l">Paid Pro (total)</span></div>
-        <div class="stat"><span class="n good">{{ h.friend_stayed + h.partner_stayed }}</span><span class="l">Stayed on app</span></div>
-      </div>
+      <!-- One-line read on the whole thing -->
+      <p class="insight">
+        {{ totalReferred }} people came in through referrals and nearly all took their free Pro.
+        <b>{{ totalActivated }} did a lesson</b>, but
+        <span :class="totalPaid ? 'good' : 'bad'">{{ totalPaid }} {{ totalPaid === 1 ? 'has' : 'have' }} converted to a paid subscription</span>.
+      </p>
 
-      <!-- Friend referral funnel -->
-      <div class="section">
-        <h2 class="section-title">Friend referral funnel</h2>
-        <div class="funnel">
-          <div v-for="s in friendFunnel" :key="s.key" class="funnel-row">
-            <span class="fl-label">{{ s.label }}</span>
-            <div class="fl-bar-wrap"><div class="fl-bar" :style="{ width: pct(s.value, h.friend_referred) + '%' }"></div></div>
-            <span class="fl-val">{{ s.value }}</span>
-            <span class="fl-pct">{{ pct(s.value, h.friend_referred) }}%</span>
-          </div>
+      <!-- Headline KPIs -->
+      <div class="kpis">
+        <div class="kpi">
+          <span class="n">{{ totalReferred }}</span><span class="l">People referred</span>
+          <span class="sub">{{ h.partner_referred || 0 }} partner · {{ h.friend_referred || 0 }} friend</span>
         </div>
-        <p class="hint">"Stayed on app" = user has activity (XP) at least 14 days after their referral claim — i.e. they came back after the free Pro window.</p>
-      </div>
-
-      <!-- Partner referral funnel -->
-      <div class="section">
-        <h2 class="section-title">Partner / creator referral funnel</h2>
-        <div class="funnel">
-          <div v-for="s in partnerFunnel" :key="s.key" class="funnel-row">
-            <span class="fl-label">{{ s.label }}</span>
-            <div class="fl-bar-wrap"><div class="fl-bar" :style="{ width: pct(s.value, h.partner_referred) + '%' }"></div></div>
-            <span class="fl-val">{{ s.value }}</span>
-            <span class="fl-pct">{{ pct(s.value, h.partner_referred) }}%</span>
-          </div>
+        <div class="kpi">
+          <span class="n gold">{{ totalActivated }}</span><span class="l">Activated</span>
+          <span class="sub">did at least one lesson</span>
+        </div>
+        <div class="kpi">
+          <span class="n">{{ totalStarted }}</span><span class="l">Started a trial / sub</span>
+          <span class="sub">real App Store / Play activity</span>
+        </div>
+        <div class="kpi">
+          <span class="n" :class="totalPaid ? 'good' : 'warn'">{{ totalPaid }}</span><span class="l">Paid conversions</span>
+          <span class="sub">actually charged</span>
         </div>
       </div>
 
-      <!-- Best partners -->
-      <div class="section">
-        <h2 class="section-title">Best partners · conversion to paid</h2>
+      <!-- What to watch -->
+      <div v-if="h.partner_lapsed" class="callout">
+        <span class="dot"></span>
+        <p><b>{{ h.partner_lapsed }} partner-referred {{ h.partner_lapsed === 1 ? 'user' : 'users' }}</b> finished the free window and never started a subscription. Worth testing a paywall nudge as the grant runs out.</p>
+      </div>
+
+      <!-- Two funnels -->
+      <div class="section-title">Funnels</div>
+      <div class="grid2">
+        <div class="card">
+          <h3>Friends</h3>
+          <p class="cap">Invited by an existing user</p>
+          <FunnelStep label="Referred" :value="h.friend_referred" :total="h.friend_referred" />
+          <FunnelStep label="Activated" :value="h.friend_activated" :total="h.friend_referred" tone="blue" />
+          <FunnelStep label="Started sub" :value="h.friend_started_pro" :total="h.friend_referred" tone="soft" />
+          <FunnelStep label="Paid" :value="h.friend_paid" :total="h.friend_referred" tone="paid" />
+        </div>
+        <div class="card">
+          <h3>Partners &amp; creators</h3>
+          <p class="cap">Redeemed a creator code (free 2-week Pro)</p>
+          <FunnelStep label="Signups" :value="h.partner_referred" :total="h.partner_referred" />
+          <FunnelStep label="Free window over" :value="h.partner_window_ended" :total="h.partner_referred" tone="soft" />
+          <FunnelStep label="Started sub" :value="h.partner_started_pro" :total="h.partner_referred" tone="soft" />
+          <FunnelStep label="Paid" :value="h.partner_paid" :total="h.partner_referred" tone="paid" />
+        </div>
+      </div>
+
+      <!-- Partner leaderboard -->
+      <div class="section-title">Partners · who drives signups &amp; who converts</div>
+      <div class="card pad0">
         <div class="table-scroll">
-          <table class="data-table">
+          <table class="lead">
             <thead>
               <tr>
-                <th>Partner</th>
+                <th>Creator</th>
                 <th class="num">Signups</th>
-                <th class="num">Joined Pro</th>
-                <th class="num">Trials</th>
+                <th class="where">Where they are now</th>
+                <th class="num">Trial</th>
                 <th class="num">Paid</th>
-                <th class="num">Conv %</th>
-                <th class="num">Stayed</th>
-                <th class="num">Avg Pro left</th>
-                <th>Status</th>
+                <th class="num">Conv</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="p in partners" :key="p.code">
                 <td>
-                  <span class="creator-name">{{ p.creator_name }}</span>
-                  <span v-if="p.creator_handle" class="creator-handle">{{ p.creator_handle }}</span>
+                  <span class="cname">{{ p.creator_name }}</span>
+                  <span v-if="p.creator_handle" class="chandle">{{ p.creator_handle }}</span>
                 </td>
                 <td class="num">{{ p.signups }}</td>
-                <td class="num">{{ p.joined_pro }}</td>
+                <td>
+                  <div class="stack" :title="stackTitle(p)">
+                    <span class="sg" :style="{ width: pctOf(p.on_grant, p.signups) + '%' }"></span>
+                    <span class="st" :style="{ width: pctOf(p.trials, p.signups) + '%' }"></span>
+                    <span class="sp" :style="{ width: pctOf(p.paid_conversions, p.signups) + '%' }"></span>
+                    <span class="sw" :style="{ width: pctOf(p.lapsed, p.signups) + '%' }"></span>
+                  </div>
+                </td>
                 <td class="num">{{ p.trials }}</td>
                 <td class="num gold">{{ p.paid_conversions }}</td>
-                <td class="num">{{ p.pct_paid != null ? p.pct_paid + '%' : '—' }}</td>
-                <td class="num">{{ p.stayed }}</td>
-                <td class="num">{{ p.avg_pro_days_left }}d</td>
-                <td><span class="status-pill" :class="p.active ? 'on' : 'off'">{{ p.active ? 'Active' : 'Paused' }}</span></td>
+                <td class="num">
+                  <span v-if="p.signups" class="pill" :class="p.paid_conversions ? 'some' : 'zero'">{{ p.pct_paid ?? 0 }}%</span>
+                  <span v-else class="muted">—</span>
+                </td>
               </tr>
-              <tr v-if="!partners.length"><td colspan="9" class="empty">No partner codes yet.</td></tr>
+              <tr v-if="!partners.length"><td colspan="6" class="empty">No partner codes yet.</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="hint">"Avg Pro left" = average days remaining on the referred users' Pro subscriptions from now. 0 means their free Pro has expired.</p>
+        <div class="legend">
+          <span><i class="sg"></i>On free Pro now</span>
+          <span><i class="st"></i>In trial</span>
+          <span><i class="sp"></i>Paid</span>
+          <span><i class="sw"></i>Lapsed (free ended, no purchase)</span>
+        </div>
       </div>
 
-      <!-- Best friend referrers -->
-      <div class="section">
-        <h2 class="section-title">Best friend referrers</h2>
+      <!-- Friend referrers -->
+      <div class="section-title" style="margin-top:34px">Friends · top referrers</div>
+      <div class="card pad0">
         <div class="table-scroll">
-          <table class="data-table">
+          <table class="lead">
             <thead>
-              <tr>
-                <th>Referrer</th>
-                <th class="num">Referred</th>
-                <th class="num">Activated</th>
-                <th class="num">Started Pro</th>
-                <th class="num">Paid</th>
-              </tr>
+              <tr><th>Referrer</th><th class="num">Referred</th><th class="num">Activated</th><th class="num">Paid</th></tr>
             </thead>
             <tbody>
               <tr v-for="r in friendReferrers" :key="r.referrer_user_id">
                 <td>
-                  <span class="creator-name">{{ r.referrer_name || 'Pilgrim' }}</span>
-                  <span v-if="r.referrer_username" class="creator-handle">@{{ r.referrer_username }}</span>
+                  <span class="cname">{{ r.referrer_name || 'Pilgrim' }}</span>
+                  <span v-if="r.referrer_username" class="chandle">@{{ r.referrer_username }}</span>
                 </td>
                 <td class="num">{{ r.total_referred }}</td>
                 <td class="num">{{ r.activated }}</td>
-                <td class="num">{{ r.started_pro }}</td>
                 <td class="num gold">{{ r.paid }}</td>
               </tr>
-              <tr v-if="!friendReferrers.length"><td colspan="5" class="empty">No friend referrals yet.</td></tr>
+              <tr v-if="!friendReferrers.length"><td colspan="4" class="empty">No friend referrals yet.</td></tr>
             </tbody>
           </table>
         </div>
-      </div>
-
-      <!-- Partner referred users — Pro expiring -->
-      <div class="section">
-        <h2 class="section-title">Partner referred users · Pro time remaining</h2>
-        <div class="table-scroll">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Code</th>
-                <th>Redeemed</th>
-                <th class="num">Pro days granted</th>
-                <th class="num">Days left</th>
-                <th>Paid?</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="u in expiring" :key="u.user_id" :class="{ expired: u.days_left === 0 && !u.paid }">
-                <td>
-                  <span class="creator-name">{{ u.referred_name || 'Pilgrim' }}</span>
-                  <span v-if="u.referred_username" class="creator-handle">@{{ u.referred_username }}</span>
-                </td>
-                <td><code class="code">{{ u.code }}</code></td>
-                <td>{{ formatDate(u.redeemed_at) }}</td>
-                <td class="num">{{ u.pro_days_granted }}d</td>
-                <td class="num">
-                  <span v-if="u.days_left === null" class="lifetime">Lifetime</span>
-                  <span v-else :class="daysLeftClass(u.days_left)">{{ u.days_left }}d</span>
-                </td>
-                <td><span class="status-pill" :class="u.paid ? 'paid' : 'off'">{{ u.paid ? 'Paid' : '—' }}</span></td>
-              </tr>
-              <tr v-if="!expiring.length"><td colspan="6" class="empty">No partner-referred users yet.</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="hint">Shows the most recent 500 partner-referred users. "Days left" is how long until their free Pro expires — when it hits 0, they either convert to paid or drop to free.</p>
       </div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, h as vnode } from 'vue'
 
 const loading = ref(true)
 const error = ref('')
 const headline = ref<any>({})
 const friendReferrers = ref<any[]>([])
 const partners = ref<any[]>([])
-const expiring = ref<any[]>([])
 
 const h = computed(() => headline.value)
+const numv = (v: any) => (Number.isFinite(Number(v)) ? Number(v) : 0)
 
-const friendFunnel = computed(() => {
-  const d = headline.value
-  return [
-    { key: 'referred',      label: 'Referred by a friend', value: d.friend_referred },
-    { key: 'activated',      label: 'Activated (did a lesson)', value: d.friend_activated },
-    { key: 'started_pro',    label: 'Started Pro / trial', value: d.friend_started_pro },
-    { key: 'paid',           label: 'Converted to paid Pro', value: d.friend_paid },
-    { key: 'stayed',         label: 'Stayed on app after Pro', value: d.friend_stayed },
-  ]
-})
+const totalReferred = computed(() => numv(h.value.friend_referred) + numv(h.value.partner_referred))
+const totalActivated = computed(() => numv(h.value.friend_activated) + numv(h.value.partner_activated))
+const totalStarted = computed(() => numv(h.value.friend_started_pro) + numv(h.value.partner_started_pro))
+const totalPaid = computed(() => numv(h.value.friend_paid) + numv(h.value.partner_paid))
 
-const partnerFunnel = computed(() => {
-  const d = headline.value
-  return [
-    { key: 'referred',      label: 'Referred by a partner', value: d.partner_referred },
-    { key: 'started_pro',    label: 'Started Pro / trial', value: d.partner_started_pro },
-    { key: 'paid',           label: 'Converted to paid Pro', value: d.partner_paid },
-    { key: 'stayed',         label: 'Stayed on app after Pro', value: d.partner_stayed },
-  ]
-})
-
-function pct(v: any, total: number): number {
-  const n = Number(v)
-  return total ? Math.round((n / total) * 100) : 0
+function pctOf(v: any, total: any): number {
+  const t = numv(total)
+  return t ? Math.round((numv(v) / t) * 100) : 0
 }
 
-function formatDate(d: string): string {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+function stackTitle(p: any): string {
+  return `On free Pro ${numv(p.on_grant)} · In trial ${numv(p.trials)} · Paid ${numv(p.paid_conversions)} · Lapsed ${numv(p.lapsed)}`
 }
 
-function daysLeftClass(d: number): string {
-  if (d <= 0) return 'expired-text'
-  if (d <= 3) return 'warn-text'
-  return ''
+// Inline funnel-step renderer: label · proportion bar · value + %.
+const FunnelStep = (props: { label: string; value: any; total: any; tone?: string }) => {
+  const val = numv(props.value)
+  const total = numv(props.total)
+  const pct = total ? Math.round((val / total) * 100) : 0
+  const tone = props.tone || 'primary'
+  const isBase = props.label === 'Referred' || props.label === 'Signups'
+  return vnode('div', { class: 'step' }, [
+    vnode('span', { class: 'sl' }, props.label),
+    vnode('div', { class: 'track' }, [
+      vnode('div', { class: `fill ${tone}`, style: { width: Math.max(pct, val > 0 ? 3 : 0) + '%' } }),
+    ]),
+    vnode('span', { class: 'val' + (val === 0 ? ' zero' : '') }, [
+      vnode('b', {}, String(val)),
+      isBase ? '' : ` · ${pct}%`,
+    ]),
+  ])
 }
 
-onMounted(async () => {
+async function load() {
+  loading.value = true
   try {
     const res = await fetch('/api/dashboard?view=referrals')
     if (!res.ok) { error.value = 'Failed to load referral data.'; loading.value = false; return }
@@ -210,9 +191,10 @@ onMounted(async () => {
     headline.value = d.headline ?? {}
     friendReferrers.value = d.friend_referrers ?? []
     partners.value = d.partner_stats ?? []
-    expiring.value = d.partner_pro_expiring ?? []
   } catch { error.value = 'Network error.' } finally { loading.value = false }
-})
+}
+
+onMounted(load)
 </script>
 
 <style scoped>
@@ -222,46 +204,75 @@ onMounted(async () => {
 .note { font-family: var(--sans); font-size: 13px; color: var(--text-3); padding: 20px 0; }
 .note.err { color: #ff6b5e; }
 
-.statstrip { display: flex; gap: 10px; margin-bottom: 26px; flex-wrap: wrap; }
-.stat { flex: 1; min-width: 130px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
-.stat .n { font-family: var(--serif); font-size: 26px; color: var(--text); line-height: 1; }
-.stat .n.gold { color: var(--gold-light); }
-.stat .n.good { color: #34c759; }
-.stat .l { font-family: var(--sans); font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+.insight {
+  font-family: var(--serif); font-size: 18px; line-height: 1.45; color: var(--text);
+  margin: 0 0 26px; max-width: 640px;
+}
+.insight b { color: var(--gold-light); font-weight: 600; }
+.insight .bad { color: #d4673a; }
+.insight .good { color: #34c759; }
 
-.section { margin-bottom: 34px; }
-.section-title { font-family: var(--sans); font-size: 13px; color: var(--text-3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 14px; }
-.hint { font-family: var(--sans); font-size: 12px; color: var(--text-3); margin: 10px 0 0; line-height: 1.5; }
-.hint b { color: var(--text); }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 15px 17px; display: flex; flex-direction: column; }
+.kpi .n { font-family: var(--serif); font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .n.gold { color: var(--gold-light); }
+.kpi .n.good { color: #34c759; }
+.kpi .n.warn { color: #d4673a; }
+.kpi .l { font-family: var(--sans); font-size: 11.5px; color: var(--text-3); margin-top: 8px; }
+.kpi .sub { font-family: var(--sans); font-size: 11px; color: var(--text-3); opacity: .7; margin-top: 2px; }
 
-.funnel { display: flex; flex-direction: column; gap: 8px; }
-.funnel-row { display: grid; grid-template-columns: 200px 1fr auto 46px; align-items: center; gap: 12px; }
-.fl-label { font-family: var(--sans); font-size: 13px; color: var(--text-2); }
-.fl-bar-wrap { height: 24px; background: var(--surface); border-radius: 6px; overflow: hidden; }
-.fl-bar { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-light)); border-radius: 6px; }
-.fl-val { font-family: var(--sans); font-size: 13px; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
-.fl-pct { font-family: var(--sans); font-size: 12px; color: var(--text-3); text-align: right; font-variant-numeric: tabular-nums; }
+.callout { display: flex; gap: 13px; align-items: flex-start; background: rgba(212,103,58,.07); border: 1px solid rgba(212,103,58,.25); border-radius: 10px; padding: 14px 16px; margin: 0 0 30px; }
+.callout .dot { width: 8px; height: 8px; border-radius: 50%; background: #d4673a; margin-top: 7px; flex: none; }
+.callout p { margin: 0; font-family: var(--sans); font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.callout b { color: #d4673a; }
+
+.section-title { font-family: var(--sans); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); margin: 0 0 14px; font-weight: 500; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 34px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.card.pad0 { padding: 16px 16px 14px; }
+.card h3 { font-family: var(--serif); font-weight: 600; font-size: 17px; color: var(--text); margin: 0 0 2px; }
+.card .cap { font-family: var(--sans); font-size: 12px; color: var(--text-3); margin: 0 0 18px; }
 
 .table-scroll { overflow-x: auto; }
-.data-table { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 13px; }
-.data-table th { background: var(--surface); color: var(--text-3); font-weight: 500; text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-.data-table th.num, .data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.data-table td { padding: 9px 12px; border-bottom: 0.5px solid var(--line); color: var(--text-2); }
-.data-table td.num { color: var(--text); }
-.data-table td.gold { color: var(--gold-light); font-weight: 600; }
-.data-table tr.expired td { opacity: 0.55; }
 
-.creator-name { color: var(--text); font-weight: 500; }
-.creator-handle { color: var(--text-3); font-size: 11px; margin-left: 6px; }
-.code { font-family: var(--sans); font-size: 12px; color: var(--gold-light); background: rgba(196,145,44,0.08); padding: 2px 7px; border-radius: 4px; }
+:deep(.step) { display: grid; grid-template-columns: 122px 1fr 74px; align-items: center; gap: 12px; margin-bottom: 11px; }
+:deep(.step .sl) { font-family: var(--sans); font-size: 12.5px; color: var(--text); }
+:deep(.step .track) { height: 22px; background: var(--bg, #0c0c0c); border-radius: 5px; overflow: hidden; }
+:deep(.step .fill) { height: 100%; border-radius: 5px; min-width: 0; }
+:deep(.step .fill.primary) { background: linear-gradient(90deg, #3a3126, var(--gold)); }
+:deep(.step .fill.soft) { background: #6e5a34; }
+:deep(.step .fill.blue) { background: #5a93c4; }
+:deep(.step .fill.paid) { background: #34c759; }
+:deep(.step .val) { text-align: right; font-family: var(--sans); font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--text-3); }
+:deep(.step .val b) { color: var(--text); font-weight: 600; }
+:deep(.step .val.zero b) { color: #d4673a; }
 
-.status-pill { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 100px; white-space: nowrap; }
-.status-pill.on { color: #34c759; background: rgba(52,199,89,0.12); }
-.status-pill.off { color: var(--text-3); background: var(--surface); }
-.status-pill.paid { color: var(--gold-light); background: rgba(196,145,44,0.12); }
+table.lead { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 13px; }
+table.lead th { text-align: left; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-3); font-weight: 500; padding: 4px 10px 10px; white-space: nowrap; }
+table.lead th.num, table.lead td.num { text-align: right; font-variant-numeric: tabular-nums; }
+table.lead th.where { width: 170px; }
+table.lead td { padding: 11px 10px; border-top: 1px solid var(--line); color: var(--text-2); }
+table.lead td.gold { color: var(--gold-light); font-weight: 600; }
+.cname { color: var(--text); font-weight: 500; }
+.chandle { color: var(--text-3); font-size: 11px; margin-left: 6px; }
+.muted { color: var(--text-3); }
+.empty { text-align: center; color: var(--text-3); padding: 22px 0; }
 
-.lifetime { color: var(--gold-light); font-weight: 600; }
-.warn-text { color: var(--streak); font-weight: 600; }
-.expired-text { color: var(--text-3); }
-.empty { text-align: center; color: var(--text-3); padding: 20px 0; }
+.stack { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--bg, #0c0c0c); width: 160px; }
+.stack span { display: block; height: 100%; }
+.sg { background: #5a93c4; }
+.st { background: var(--gold); }
+.sp { background: #34c759; }
+.sw { background: #d4673a; opacity: .7; }
+.pill { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 100px; }
+.pill.zero { color: #d4673a; background: rgba(212,103,58,.12); }
+.pill.some { color: #34c759; background: rgba(52,199,89,.14); }
+.legend { display: flex; gap: 16px; margin: 14px 4px 2px; font-family: var(--sans); font-size: 11px; color: var(--text-3); flex-wrap: wrap; }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+@media (max-width: 720px) {
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .grid2 { grid-template-columns: 1fr; }
+}
 </style>
