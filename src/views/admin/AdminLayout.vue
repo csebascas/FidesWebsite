@@ -79,6 +79,7 @@ const NAV_TOP = [
 const NAV_MONEY = [
   { to: '/d/revenue', label: 'Revenue', icon: `<path d="M7 1.5v11M9.8 3.6H5.7a1.9 1.9 0 1 0 0 3.8h2.6a1.9 1.9 0 1 1 0 3.8H3.9" ${STROKE} stroke-width="1.2"/>` },
   { to: '/d/referrals', label: 'Referrals', icon: `<path d="M4.2 4.6a2.3 2.3 0 1 1 4.6 0 2.3 2.3 0 1 1-4.6 0M2 11.6a4.4 4.4 0 0 1 8.8 0M9.8 6.2 12 4M10.4 3.4l-.6 2.8 2.8-.6" ${STROKE} stroke-width="1.1"/>` },
+  { to: '/d/offers', label: 'Offers', icon: `<path d="M6.7 1.9H2.4a.5.5 0 0 0-.5.5v4.3a1 1 0 0 0 .3.7l4.6 4.6a1 1 0 0 0 1.4 0l4-4a1 1 0 0 0 0-1.4L7.4 2.2a1 1 0 0 0-.7-.3z" ${STROKE} stroke-width="1.1"/><circle cx="4.6" cy="4.6" r="0.8" ${STROKE} stroke-width="1"/>` },
   { to: '/d/creators', label: 'Creators', icon: `<circle cx="7" cy="4.4" r="2.3" ${STROKE} stroke-width="1.1"/><path d="M2.6 11.6a4.4 4.4 0 0 1 8.8 0" ${STROKE} stroke-width="1.1"/><path d="M11 2.2l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z" ${STROKE} stroke-width="0.9"/>` },
   { to: '/d/creator-of-month', label: 'Creator of Month', icon: `<path d="M7 1.6l1.6 3.3 3.6.5-2.6 2.5.6 3.6L7 9.8 3.8 11.6l.6-3.6L1.8 5.4l3.6-.5z" ${STROKE} stroke-width="1.1"/>` },
 ]
