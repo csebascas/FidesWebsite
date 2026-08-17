@@ -74,22 +74,24 @@
         </div>
       </div>
 
-      <!-- Retention cohorts -->
+      <!-- Channel quality -->
       <div class="section">
-        <h2 class="section-title">Weekly retention cohorts</h2>
-        <p class="hint">% of each week's signups active (any XP) in later weeks. Grey = week hasn't elapsed.</p>
-        <div class="table-scroll">
+        <h2 class="section-title">Channel quality</h2>
+        <p class="hint">Volume vs. what the channel is worth.</p>
+        <div v-if="attributionError" class="note small">Channel-quality data isn't available right now.</div>
+        <div v-else-if="!channelRows.length" class="note small">No attribution data yet.</div>
+        <div v-else class="table-scroll">
           <table class="cohort">
             <thead>
-              <tr><th>Signed up</th><th class="num">Users</th><th class="num">Wk 1</th><th class="num">Wk 2</th><th class="num">Wk 4</th><th class="num">Wk 8</th></tr>
+              <tr><th>Source</th><th class="num">Signups</th><th class="num">D7 ret.</th><th class="num">Pro conv.</th><th class="num">Verdict</th></tr>
             </thead>
             <tbody>
-              <tr v-for="c in cohorts" :key="c.date">
-                <td>{{ c.week }}</td>
-                <td class="num">{{ c.users }}</td>
-                <td v-for="w in [1,2,4,8]" :key="w" class="num cell" :class="[{ future: !isMature(c, w) }, cohortRag(c, w)]">
-                  {{ isMature(c, w) ? cohortPct(c, w) + '%' : '—' }}
-                </td>
+              <tr v-for="r in channelRows" :key="r.source">
+                <td>{{ r.source }}</td>
+                <td class="num">{{ r.signups }}</td>
+                <td class="num">{{ r.d7_ret_pct == null ? '—' : r.d7_ret_pct + '%' }}</td>
+                <td class="num">{{ r.pro_conv_pct == null ? '—' : r.pro_conv_pct + '%' }}</td>
+                <td class="num"><span class="vpill" :class="verdictClass(r.verdict)">{{ r.verdict }}</span></td>
               </tr>
             </tbody>
           </table>
@@ -132,10 +134,16 @@ const loading = ref(true)
 const error = ref('')
 const funnel = ref<any>({})
 const activation = ref<any>({})
-const cohorts = ref<any[]>([])
 const streaks = ref<any>({})
 const features = ref<any>({})
 const churn = ref<any>({})
+const attribution = ref<any[]>([])
+const attributionError = ref(false)
+
+const channelRows = computed(() => [...(attribution.value || [])].sort((a, b) => Number(b.signups ?? 0) - Number(a.signups ?? 0)))
+function verdictClass(v: string): string {
+  return v === 'best' || v === 'sticky' ? 'good' : v === 'volume' ? 'mid' : v === 'weak' ? 'bad' : ''
+}
 
 const funnelSteps = computed(() => {
   const f = funnel.value
@@ -202,26 +210,6 @@ function featPct(v: number): number {
   const total = features.value?.active_28d || 0
   return total ? Math.round((Number(v) / total) * 100) : 0
 }
-function cohortPct(c: any, wk: number): number {
-  const n = Number(c['wk' + wk] ?? 0), u = Number(c.users ?? 0)
-  return u ? Math.round((n / u) * 100) : 0
-}
-function weeksSince(d: string): number {
-  if (!d) return 0
-  return Math.floor((Date.now() - new Date(d + 'T00:00:00Z').getTime()) / (7 * 864e5))
-}
-function isMature(c: any, wk: number): boolean { return weeksSince(c.date) >= wk }
-// Per-week retention benchmark bands [category-median, best-in-class]. Retention
-// decays each week, so the bar drops. Below median = red, on par = amber,
-// at/above best-in-class = green.
-const COHORT_BANDS: Record<number, [number, number]> = { 1: [25, 45], 2: [15, 30], 4: [8, 20], 8: [5, 12] }
-function cohortRag(c: any, wk: number): string {
-  if (!isMature(c, wk)) return ''
-  const p = cohortPct(c, wk)
-  const [mid, high] = COHORT_BANDS[wk]
-  return p >= high ? 'good' : p >= mid ? 'mid' : 'bad'
-}
-
 onMounted(async () => {
   try {
     const res = await fetch('/api/dashboard?view=growth')
@@ -229,10 +217,16 @@ onMounted(async () => {
     const d = await res.json()
     funnel.value = d.funnel ?? {}
     activation.value = d.activation ?? {}
-    cohorts.value = d.cohorts ?? []
     streaks.value = d.streaks ?? {}
     features.value = d.features ?? {}
     churn.value = d.churn ?? {}
+    // Channel quality is secondary: a failure degrades to an empty/error panel
+    // rather than blanking the whole Growth tab.
+    try {
+      const ares = await fetch('/api/dashboard?view=attribution')
+      if (ares.ok) attribution.value = (await ares.json()) ?? []
+      else attributionError.value = true
+    } catch { attributionError.value = true }
   } catch { error.value = 'Network error.' } finally { loading.value = false }
 })
 </script>
@@ -290,11 +284,6 @@ onMounted(async () => {
 .cohort th { background: var(--surface); color: var(--text-3); font-weight: 500; text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .cohort th.num, .cohort td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .cohort td { padding: 9px 12px; border-bottom: 1px solid var(--line); color: var(--text-2); }
-.cohort td.cell { color: var(--text); border-radius: 4px; }
-.cohort td.cell.good { background: rgba(52,199,89,0.18); color: #4ad168; }
-.cohort td.cell.mid  { background: rgba(196,145,44,0.16); color: var(--gold-light); }
-.cohort td.cell.bad  { background: rgba(212,103,58,0.16); color: #e0805c; }
-.cohort td.future { color: var(--text-3); background: rgba(255,255,255,0.02) !important; }
 
 .bench { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 13px; }
 .bench th { background: var(--surface); color: var(--text-3); font-weight: 500; text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
