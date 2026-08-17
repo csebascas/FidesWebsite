@@ -90,6 +90,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(data);
     }
 
+    // ?view=retention serves the Retention tab: Day-N curve, DAU/MAU series,
+    // cohort heatmap. admin_retention_data is service_role only.
+    if (view === 'retention') {
+      const data = await cached('retention', async () => {
+        const { data, error } = await supabase.rpc('admin_retention_data', { p_days: 30 });
+        if (error) throw error;
+        return data;
+      });
+      res.setHeader('Cache-Control', 'private, max-age=30');
+      return res.status(200).json(data);
+    }
+
+    // ?view=engagement serves the Engagement tab: offer funnel, notification
+    // opt-in/sends, league competition. Read-only reporting.
+    if (view === 'engagement') {
+      const data = await cached('engagement', async () => {
+        const { data, error } = await supabase.rpc('admin_engagement_data', { p_days: 30 });
+        if (error) throw error;
+        return data;
+      });
+      res.setHeader('Cache-Control', 'private, max-age=30');
+      return res.status(200).json(data);
+    }
+
+    // ?view=attribution serves the Growth tab's channel-quality table.
+    if (view === 'attribution') {
+      const data = await cached('attribution', async () => {
+        const { data, error } = await supabase.rpc('admin_attribution_data', { p_days: 90 });
+        if (error) throw error;
+        return data;
+      });
+      res.setHeader('Cache-Control', 'private, max-age=30');
+      return res.status(200).json(data);
+    }
+
     // ?view=offers serves the Offers tab: the win-back / notification-offer
     // funnel (sent -> tapped -> converted) from the offer_funnel +
     // offer_conversions views. Those views are granted to service_role only, so
