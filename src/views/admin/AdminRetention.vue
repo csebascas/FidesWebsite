@@ -19,7 +19,7 @@
       <div class="section">
         <h2 class="section-title">Retention curve</h2>
         <p class="hint">% still active on day N after signup.</p>
-        <LineChart :series="curveSeries" :y-max="100" :x-labels="curveXLabels" :y-labels="['0', '25', '50', '75', '100']" />
+        <LineChart :series="curveSeries" :y-max="100" :x-labels="curveXLabels" :y-labels="['100', '75', '50', '25', '0']" />
       </div>
 
       <!-- Retention by attribution -->
@@ -68,7 +68,7 @@ function fmtWeek(iso: string): string {
 const curveSeries = computed(() => [
   { name: 'ret', color: '#E8B44E', points: (curve.value || []).map((c) => ({ x: c.day, y: c.pct ?? 0 })) },
 ])
-const curveXLabels = ['D0', 'D1', 'D7', 'D14', 'D30']
+const curveXLabels = ['D0', 'D10', 'D20', 'D30']
 
 const attributionRows = computed(() => {
   const rows = attribution.value || []

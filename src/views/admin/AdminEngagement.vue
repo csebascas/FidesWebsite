@@ -25,6 +25,7 @@
           <p class="hint">% of users with each kind on.</p>
           <FunnelBars v-if="optinRows.length" :rows="optinRows" />
           <p v-else class="note small">No opt-in data yet.</p>
+          <p class="hint">{{ smartTimingCaption }}</p>
         </div>
       </div>
 
@@ -67,6 +68,7 @@ const offerTtcMedianHours = ref<number | null>(null)
 const notifOptin = ref<any[]>([])
 const notifSends = ref<any[]>([])
 const league = ref<any>({})
+const smartTiming = ref<any>(null)
 
 function fmtNum(v: any): string {
   return v === null || v === undefined ? '—' : String(v)
@@ -97,8 +99,13 @@ const offerRows = computed(() => {
 
 const offerCaption = computed(() => {
   const f = offerFunnel.value?.[0]
-  if (!f) return 'No offers sent yet.'
+  if (!f) return ''
   return `${f.placement || f.offer_key || 'offer'} · last 30d`
+})
+
+const smartTimingCaption = computed(() => {
+  const pct = smartTiming.value?.on_pct
+  return pct === null || pct === undefined ? 'Smart timing on for — of users.' : `Smart timing on for ${pct}% of users.`
 })
 
 const ttcCaption = computed(() => {
@@ -126,6 +133,7 @@ onMounted(async () => {
     notifOptin.value = d.notif_optin ?? []
     notifSends.value = d.notif_sends ?? []
     league.value = d.league ?? {}
+    smartTiming.value = d.smart_timing ?? null
   } catch {
     error.value = 'Network error.'
   } finally {
