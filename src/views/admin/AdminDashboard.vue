@@ -46,7 +46,7 @@
       <LineChart :series="dauMauSeries" :y-max="dauMauMax" :x-labels="dauMauXLabels" />
       <div class="legend">
         <span><span class="dot" style="background:#E8B44E"></span>DAU</span>
-        <span><span class="dot" style="background:#C4912C"></span>MAU</span>
+        <span><span class="dot" style="background:#8C8782"></span>MAU</span>
       </div>
     </div>
 
@@ -202,8 +202,8 @@ const mauSpark = computed(() => dauMau.value.map((d) => Number(d.mau ?? 0)))
 const stickinessSpark = computed(() => dauMau.value.map((d) => Number(d.stickiness ?? 0)))
 
 const dauMauSeries = computed(() => [
-  { name: 'MAU', color: '#C4912C', points: dauMau.value.map((d, i) => ({ x: i, y: Number(d.mau ?? 0) })) },
   { name: 'DAU', color: '#E8B44E', points: dauMau.value.map((d, i) => ({ x: i, y: Number(d.dau ?? 0) })) },
+  { name: 'MAU', color: '#8C8782', points: dauMau.value.map((d, i) => ({ x: i, y: Number(d.mau ?? 0) })) },
 ])
 const dauMauMax = computed(() => Math.max(1, ...dauMau.value.map((d) => Number(d.mau ?? 0))))
 const dauMauXLabels = computed(() => {
