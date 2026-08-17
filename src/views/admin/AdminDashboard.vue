@@ -5,6 +5,68 @@
       <div class="date">{{ today }}</div>
     </header>
 
+    <!-- North-star -->
+    <h2 class="section-title rise" style="--i: 1">North-star</h2>
+    <div class="ns-grid rise" style="--i: 1">
+      <template v-if="loading">
+        <div v-for="i in 4" :key="i" class="ns-tile">
+          <div class="skeleton-number"></div>
+          <div class="skeleton-label"></div>
+        </div>
+      </template>
+      <template v-else>
+        <div class="ns-tile">
+          <span class="ns-l">Daily active</span>
+          <span class="ns-n">{{ ns.dau ?? '—' }}</span>
+          <Sparkline v-if="dauSpark.length > 1" :points="dauSpark" color="#E8B44E" />
+        </div>
+        <div class="ns-tile">
+          <span class="ns-l">Weekly active</span>
+          <span class="ns-n">{{ ns.wau ?? '—' }}</span>
+          <Sparkline v-if="wauSpark.length > 1" :points="wauSpark" color="#A8A49C" />
+        </div>
+        <div class="ns-tile">
+          <span class="ns-l">Monthly active</span>
+          <span class="ns-n">{{ ns.mau ?? '—' }}</span>
+          <Sparkline v-if="mauSpark.length > 1" :points="mauSpark" color="#A8A49C" />
+        </div>
+        <div class="ns-tile">
+          <span class="ns-l">Stickiness · DAU/MAU</span>
+          <span class="ns-n gold">{{ ns.stickiness != null ? ns.stickiness + '%' : '—' }}</span>
+          <Sparkline v-if="stickinessSpark.length > 1" :points="stickinessSpark" color="#E8B44E" />
+        </div>
+      </template>
+    </div>
+
+    <div v-if="!loading && dauMauSeries[0].points.length > 1" class="section chart-card rise" style="--i: 2">
+      <div class="chart-h">
+        <span class="ct">Active users</span>
+        <span class="cs">DAU / MAU · last 30 days</span>
+      </div>
+      <LineChart :series="dauMauSeries" :y-max="dauMauMax" :x-labels="dauMauXLabels" />
+      <div class="legend">
+        <span><span class="dot" style="background:#E8B44E"></span>DAU</span>
+        <span><span class="dot" style="background:#C4912C"></span>MAU</span>
+      </div>
+    </div>
+
+    <!-- Today -->
+    <h2 class="section-title rise" style="--i: 2">Today</h2>
+    <div class="ns-grid rise" style="--i: 2">
+      <template v-if="loading">
+        <div v-for="i in 4" :key="i" class="ns-tile">
+          <div class="skeleton-number"></div>
+          <div class="skeleton-label"></div>
+        </div>
+      </template>
+      <template v-else>
+        <div class="ns-tile"><span class="ns-l">Lessons done</span><span class="ns-n">{{ todayStats.lessons ?? '—' }}</span></div>
+        <div class="ns-tile"><span class="ns-l">Reviews done</span><span class="ns-n">{{ todayStats.reviews ?? '—' }}</span></div>
+        <div class="ns-tile"><span class="ns-l">New signups</span><span class="ns-n">{{ todayStats.signups ?? '—' }}</span></div>
+        <div class="ns-tile"><span class="ns-l">New Pro</span><span class="ns-n gold">{{ todayStats.new_pro ?? '—' }}</span></div>
+      </template>
+    </div>
+
     <!-- Stat strip -->
     <div class="statstrip rise" style="--i: 1">
       <template v-if="loading">
@@ -109,6 +171,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import Sparkline from '../../components/charts/Sparkline.vue'
+import LineChart from '../../components/charts/LineChart.vue'
 
 const loading = ref(true)
 const stats = ref<any>({})
@@ -118,6 +182,43 @@ const trackStats = ref<any[]>([])
 const streaks = ref<any[]>([])
 const activity = ref<any[]>([])
 const warnings = ref<any[]>([])
+
+// North-star (dau/wau/mau/stickiness) + today's counts ride the default
+// /api/dashboard payload — same fetch as everything else below.
+const ns = ref<{ dau?: number; wau?: number; mau?: number; stickiness?: number }>({})
+const todayStats = ref<{ lessons?: number; reviews?: number; signups?: number; new_pro?: number }>({})
+
+// DAU/MAU daily series only exists on ?view=retention (dau_mau). Decision
+// (recorded in task-5-report.md): Overview issues a second fetch to
+// ?view=retention to power the area chart + tile sparklines, since that
+// endpoint is cached 30s server-side and reused by the Retention tab. If
+// this fetch fails, the chart/sparklines are simply omitted (v-if guards) —
+// the north-star scalar tiles and everything else still render.
+const dauMau = ref<any[]>([])
+
+const dauSpark = computed(() => dauMau.value.map((d) => Number(d.dau ?? 0)))
+const wauSpark = computed(() => dauMau.value.map((d) => Number(d.wau ?? 0)))
+const mauSpark = computed(() => dauMau.value.map((d) => Number(d.mau ?? 0)))
+const stickinessSpark = computed(() => dauMau.value.map((d) => Number(d.stickiness ?? 0)))
+
+const dauMauSeries = computed(() => [
+  { name: 'MAU', color: '#C4912C', points: dauMau.value.map((d, i) => ({ x: i, y: Number(d.mau ?? 0) })) },
+  { name: 'DAU', color: '#E8B44E', points: dauMau.value.map((d, i) => ({ x: i, y: Number(d.dau ?? 0) })) },
+])
+const dauMauMax = computed(() => Math.max(1, ...dauMau.value.map((d) => Number(d.mau ?? 0))))
+const dauMauXLabels = computed(() => {
+  const n = dauMau.value.length
+  if (n < 2) return []
+  const first = fmtDay(dauMau.value[0]?.day)
+  const last = fmtDay(dauMau.value[n - 1]?.day)
+  return [first, last]
+})
+
+function fmtDay(iso: string): string {
+  if (!iso) return ''
+  const d = new Date(iso + 'T00:00:00Z')
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+}
 
 const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
@@ -168,9 +269,22 @@ onMounted(async () => {
       trackStats.value = d.track_stats || []
       streaks.value = d.streaks || []
       warnings.value = d.warnings || []
+      ns.value = { dau: d.dau, wau: d.wau, mau: d.mau, stickiness: d.stickiness }
+      todayStats.value = d.today || {}
     }
   } catch { /* keep defaults */ }
   loading.value = false
+
+  // Secondary: the DAU/MAU chart + tile sparklines. A failure here degrades
+  // gracefully (chart/sparklines omitted via v-if) rather than blanking the
+  // page — the north-star tiles above already rendered from the primary fetch.
+  try {
+    const res = await fetch('/api/dashboard?view=retention')
+    if (res.ok) {
+      const d = await res.json()
+      dauMau.value = d.dau_mau || []
+    }
+  } catch { /* leave dauMau empty */ }
 })
 </script>
 
@@ -218,6 +332,24 @@ onMounted(async () => {
 .skeleton-number { width: 44px; height: 24px; background: var(--raised); border-radius: 4px; animation: pulse 1.5s ease-in-out infinite; }
 .skeleton-label { width: 62px; height: 9px; background: var(--raised); border-radius: 3px; animation: pulse 1.5s ease-in-out infinite; animation-delay: 0.1s; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* North-star + Today tile rows */
+.ns-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 22px; }
+.ns-tile {
+  background: var(--surface); border-radius: 10px; padding: 14px 16px 12px;
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.ns-l { font-family: var(--sans); font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-3); }
+.ns-n { font-family: var(--sans); font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
+.ns-n.gold { color: var(--gold-light); }
+
+/* DAU/MAU chart card */
+.chart-card { background: var(--surface); border-radius: 10px; padding: 16px 18px 14px; margin-bottom: 26px; }
+.chart-h { display: flex; align-items: baseline; gap: 8px; }
+.ct { font-family: var(--sans); font-size: 12.5px; font-weight: 600; color: var(--text); }
+.cs { font-family: var(--sans); font-size: 10.5px; color: var(--text-3); }
+.legend { display: flex; align-items: center; gap: 14px; margin-top: 6px; font-family: var(--sans); font-size: 10.5px; color: var(--text-2); }
+.dot { display: inline-block; width: 6px; height: 6px; border-radius: 3px; margin-right: 5px; }
 
 /* Two-column layout */
 .dash-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 34px; }
@@ -306,9 +438,11 @@ onMounted(async () => {
   .statstrip { flex-wrap: wrap; padding: 8px 0; }
   .stat { flex: 1 1 33%; padding: 10px 20px; border-right: none; }
   .dash-grid { grid-template-columns: 1fr; }
+  .ns-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 600px) {
   .stat { flex: 1 1 50%; }
   .cgrid { grid-template-columns: repeat(2, 1fr); }
+  .ns-grid { grid-template-columns: 1fr; }
 }
 </style>
