@@ -1,7 +1,7 @@
 <template>
   <div class="retention">
     <h1 class="page-title">Retention</h1>
-    <p class="subtitle">How many come back — the number that decides everything else.</p>
+    <p class="subtitle">How many come back. The number that decides everything else.</p>
 
     <div v-if="loading" class="note">Loading…</div>
     <div v-else-if="error" class="note err">{{ error }}</div>
@@ -22,11 +22,12 @@
         <LineChart :series="curveSeries" :y-max="100" :x-labels="curveXLabels" :y-labels="['0', '25', '50', '75', '100']" />
       </div>
 
-      <!-- DAU/MAU -->
-      <div v-if="dauMauSeries[0].points.length" class="section">
-        <h2 class="section-title">DAU / MAU</h2>
-        <p class="hint">Daily active users over the last 30 days.</p>
-        <LineChart :series="dauMauSeries" :y-max="dauMauMax" :x-labels="dauMauXLabels" />
+      <!-- Retention by attribution -->
+      <div class="section">
+        <h2 class="section-title">Retention by attribution</h2>
+        <p class="hint">D7 return, by how they found Fides.</p>
+        <FunnelBars v-if="attributionRows.length" :rows="attributionRows" />
+        <p v-else class="note small">No attribution data yet.</p>
       </div>
 
       <!-- Cohort heatmap -->
@@ -43,12 +44,13 @@
 import { ref, computed, onMounted } from 'vue'
 import LineChart from '../../components/charts/LineChart.vue'
 import CohortHeatmap from '../../components/charts/CohortHeatmap.vue'
+import FunnelBars from '../../components/charts/FunnelBars.vue'
 
 const loading = ref(true)
 const error = ref('')
 const headline = ref<any>({})
 const curve = ref<any[]>([])
-const dauMau = ref<any[]>([])
+const attribution = ref<any[]>([])
 const cohorts = ref<any[]>([])
 
 function fmtPct(v: any): string {
@@ -68,17 +70,16 @@ const curveSeries = computed(() => [
 ])
 const curveXLabels = ['D0', 'D1', 'D7', 'D14', 'D30']
 
-const dauMauSeries = computed(() => [
-  { name: 'dau', color: '#E8B44E', points: (dauMau.value || []).map((d) => ({ x: d.day, y: d.dau ?? 0 })) },
-])
-const dauMauMax = computed(() => {
-  const vals = (dauMau.value || []).map((d) => Number(d.mau ?? d.dau ?? 0))
-  return Math.max(10, ...vals)
-})
-const dauMauXLabels = computed(() => {
-  const n = (dauMau.value || []).length
-  if (!n) return []
-  return ['D0', `D${Math.round(n / 2)}`, `D${n - 1}`]
+const attributionRows = computed(() => {
+  const rows = attribution.value || []
+  const maxD7 = Math.max(0, ...rows.map((r) => Number(r.d7_ret_pct ?? 0)))
+  return [...rows]
+    .sort((a, b) => Number(b.d7_ret_pct ?? 0) - Number(a.d7_ret_pct ?? 0))
+    .map((r) => ({
+      label: r.source,
+      value: r.d7_ret_pct == null ? '—' : `${r.d7_ret_pct}%`,
+      frac: maxD7 ? (Number(r.d7_ret_pct ?? 0)) / maxD7 : 0,
+    }))
 })
 
 const cohortHeaders = ['W0', 'W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8']
@@ -93,8 +94,13 @@ onMounted(async () => {
     const d = await res.json()
     headline.value = d.headline ?? {}
     curve.value = d.curve ?? []
-    dauMau.value = d.dau_mau ?? []
     cohorts.value = d.cohorts ?? []
+    // Attribution is secondary: a failure degrades to an empty panel rather
+    // than blanking the whole page.
+    try {
+      const ares = await fetch('/api/dashboard?view=attribution')
+      if (ares.ok) attribution.value = (await ares.json()) ?? []
+    } catch { /* leave attribution empty */ }
   } catch { error.value = 'Network error.' } finally { loading.value = false }
 })
 </script>
@@ -105,6 +111,7 @@ onMounted(async () => {
 .subtitle { font-family: var(--sans); font-size: 13px; color: var(--text-3); margin: 0 0 22px; }
 .note { font-family: var(--sans); font-size: 13px; color: var(--text-3); padding: 20px 0; }
 .note.err { color: #ff6b5e; }
+.note.small { padding: 8px 0; }
 
 .statstrip { display: flex; gap: 10px; margin-bottom: 26px; flex-wrap: wrap; }
 .stat { flex: 1; min-width: 130px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
