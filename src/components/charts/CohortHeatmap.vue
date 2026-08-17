@@ -9,6 +9,10 @@ function bg(v: number | null): string {
   const r = lerp(0x4a, 0xe8), g = lerp(0x3b, 0xb4), b2 = lerp(0x1e, 0x4e);
   return `rgb(${r},${g},${b2})`;
 }
+// Legible text on the gold-scale: light on the dark (low) end, dark on the gold (high) end.
+function fg(v: number): string {
+  return v / 100 < 0.5 ? '#F2EDE4' : '#0C0C0C';
+}
 </script>
 <template>
   <div class="heat-wrap">
@@ -21,7 +25,7 @@ function bg(v: number | null): string {
           <td class="lab">{{ r.label }}</td>
           <td class="sz">{{ r.size }}</td>
           <td v-for="(v, i) in r.w" :key="i" class="cell" :class="{ na: v === null }"
-              :style="v === null ? {} : { background: bg(v), color: '#0C0C0C' }">
+              :style="v === null ? {} : { background: bg(v), color: fg(v) }">
             {{ v === null ? '—' : v }}
           </td>
         </tr>

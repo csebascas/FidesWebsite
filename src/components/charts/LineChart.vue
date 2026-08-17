@@ -31,7 +31,7 @@ const grid = [0.25, 0.5, 0.75, 1].map((f) => PAD_T + plotH * f);
       </linearGradient>
     </defs>
     <line v-for="(gy, i) in grid" :key="i" x1="0" :x2="W" :y1="gy" :y2="gy" stroke="#1c1c1c" />
-    <path :d="area(series[0])" :fill="`url(#fill-${series[0].name})`" />
+    <path v-if="series.length" :d="area(series[0])" :fill="`url(#fill-${series[0].name})`" />
     <path v-for="s in series" :key="s.name" :d="line(s)" fill="none" :stroke="s.color" stroke-width="1.8" />
     <circle v-for="s in series" :key="s.name + '-dot'"
       :cx="sx(s.points[s.points.length - 1]?.x ?? 0)" :cy="sy(s.points[s.points.length - 1]?.y ?? 0)"
