@@ -1,0 +1,345 @@
+<title>Fides Admin — Analytics Redesign Mockup</title>
+<style>
+  :root{
+    --bg:#0C0C0C; --surface:#111111; --raised:#181818; --line:#1F1F1F; --hair:#242424;
+    --text:#F2EDE4; --text-2:#A8A49C; --text-3:#5C5A55;
+    --gold:#C4912C; --gold-light:#E8B44E;
+    --streak:#D4673A; --good:#7FB08A; --good-bright:#34c759; --bad:#D4673A;
+    --serif:'Playfair Display',Georgia,'Times New Roman',serif;
+    --sans:'DM Sans',-apple-system,system-ui,Segoe UI,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+  .app{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+
+  /* Sidebar */
+  .side{background:var(--surface);border-right:0.5px solid var(--hair);padding:22px 0;position:sticky;top:0;height:100vh}
+  .brand{font-family:var(--serif);font-size:20px;padding:0 22px 20px;letter-spacing:.5px}
+  .brand span{color:var(--gold)}
+  .navgroup{padding:14px 0 4px}
+  .navgroup h4{font-size:9.5px;letter-spacing:1.8px;text-transform:uppercase;color:var(--text-3);margin:0 0 8px;padding:0 22px;font-weight:600}
+  .nav{display:block;padding:8px 22px;color:var(--text-2);text-decoration:none;font-size:13.5px;cursor:pointer;border-left:2px solid transparent}
+  .nav:hover{color:var(--text)}
+  .nav.active{color:var(--text);border-left-color:var(--gold);background:linear-gradient(90deg,rgba(196,145,44,.07),transparent)}
+  .nav.new::after{content:'NEW';font-size:8px;letter-spacing:1px;color:var(--gold-light);border:0.5px solid rgba(196,145,44,.5);border-radius:3px;padding:1px 4px;margin-left:8px;vertical-align:1px}
+
+  /* Main */
+  main{padding:26px 30px 60px;max-width:1180px}
+  .page-h{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+  h1{font-family:var(--serif);font-weight:600;font-size:27px;margin:0}
+  .sub{color:var(--text-3);font-size:12.5px;margin:0 0 22px}
+  .range{display:flex;gap:2px;background:var(--surface);border:0.5px solid var(--hair);border-radius:6px;padding:2px}
+  .range button{background:none;border:0;color:var(--text-3);font-family:var(--sans);font-size:12px;padding:4px 10px;border-radius:4px;cursor:pointer}
+  .range button.on{background:var(--raised);color:var(--text)}
+
+  .sec-t{font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:var(--text-3);font-weight:600;margin:30px 0 12px}
+  .sec-t:first-of-type{margin-top:6px}
+
+  /* Cards + tiles */
+  .grid{display:grid;gap:14px}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:1.4fr 1fr}
+  .card{background:var(--surface);border:0.5px solid var(--hair);border-radius:10px;padding:16px 18px}
+  .card.pad{padding:18px 20px 20px}
+
+  .tile .lab{font-size:11px;letter-spacing:.4px;color:var(--text-2);text-transform:uppercase;font-weight:500}
+  .tile .big{font-family:var(--serif);font-size:34px;line-height:1;margin:10px 0 2px;font-variant-numeric:tabular-nums}
+  .tile .big.gold{color:var(--gold-light)}
+  .delta{font-size:12px;font-variant-numeric:tabular-nums}
+  .delta.up{color:var(--good)} .delta.down{color:var(--bad)}
+  .spark{margin-top:12px;display:block}
+
+  .row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:0.5px solid var(--line);font-size:13px}
+  .row:last-child{border-bottom:0}
+  .row .k{color:var(--text-2)} .row .v{font-variant-numeric:tabular-nums}
+  .muted{color:var(--text-3)}
+
+  /* funnel */
+  .funnel .fr{display:grid;grid-template-columns:150px 1fr 74px;align-items:center;gap:12px;margin:11px 0}
+  .funnel .fk{font-size:12.5px;color:var(--text-2)}
+  .funnel .ft{height:26px;background:var(--raised);border-radius:5px;overflow:hidden}
+  .funnel .fb{height:100%;background:linear-gradient(90deg,var(--gold),var(--gold-light));border-radius:5px}
+  .funnel .fv{text-align:right;font-size:12.5px;font-variant-numeric:tabular-nums}
+  .funnel .fv b{font-size:13px} .funnel .fv .pct{color:var(--text-3);font-size:11px}
+
+  /* heatmap */
+  .heat{border-collapse:separate;border-spacing:3px;font-size:11.5px;font-variant-numeric:tabular-nums}
+  .heat th{color:var(--text-3);font-weight:500;font-size:10px;padding:2px 4px;text-align:center}
+  .heat td.lab{color:var(--text-2);text-align:left;white-space:nowrap;padding-right:8px}
+  .heat td.cell{width:46px;height:30px;text-align:center;border-radius:4px;color:#0C0C0C;font-weight:600}
+  .heat td.na{background:var(--raised);color:var(--text-3)}
+
+  .legend{display:flex;gap:14px;align-items:center;margin-top:14px;font-size:11px;color:var(--text-3)}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+  .pill{font-size:10px;padding:2px 7px;border-radius:100px;font-weight:600;letter-spacing:.3px}
+  .pill.good{background:rgba(127,176,138,.14);color:var(--good)}
+  .pill.warn{background:rgba(212,103,58,.14);color:var(--streak)}
+  .pill.gold{background:rgba(196,145,44,.14);color:var(--gold-light)}
+
+  .chart-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+  .chart-h .ct{font-size:13.5px;font-weight:600}
+  .chart-h .cs{font-size:11.5px;color:var(--text-3)}
+  .capt{font-size:11.5px;color:var(--text-3);margin-top:10px}
+
+  .tabs-only{display:none}
+  .view{display:none} .view.on{display:block}
+  .note{background:linear-gradient(90deg,rgba(196,145,44,.06),transparent);border:0.5px solid rgba(196,145,44,.25);border-radius:8px;padding:12px 15px;font-size:12.5px;color:var(--text-2);margin-bottom:20px}
+  .note b{color:var(--gold-light);font-weight:600}
+  @media (max-width:920px){.app{grid-template-columns:1fr}.side{display:none}.g4{grid-template-columns:repeat(2,1fr)}.g2,.g3{grid-template-columns:1fr}}
+</style>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand">Fides<span>.</span></div>
+    <div class="navgroup">
+      <h4>Analytics</h4>
+      <a class="nav active" data-v="overview">Overview</a>
+      <a class="nav new" data-v="retention">Retention</a>
+      <a class="nav" data-v="growth">Growth</a>
+      <a class="nav new" data-v="engagement">Engagement</a>
+      <a class="nav" data-v="revenue">Revenue</a>
+    </div>
+    <div class="navgroup">
+      <h4>Content &amp; Ops</h4>
+      <a class="nav muted">Users</a>
+      <a class="nav muted">Content</a>
+      <a class="nav muted">Visio</a>
+      <a class="nav muted">Feedback</a>
+      <a class="nav muted">Health</a>
+    </div>
+  </aside>
+
+  <main>
+    <!-- OVERVIEW -->
+    <section class="view on" id="overview">
+      <div class="page-h">
+        <div>
+          <h1>Overview</h1>
+        </div>
+        <div class="range"><button>7d</button><button class="on">30d</button><button>90d</button></div>
+      </div>
+      <p class="sub">Sunday, Aug 17 · updated 2 min ago</p>
+
+      <div class="sec-t">North-star</div>
+      <div class="grid g4">
+        <div class="card tile">
+          <div class="lab">Daily active</div>
+          <div class="big">642</div>
+          <div class="delta up">▲ 8.2% vs prev 30d</div>
+          <svg class="spark" width="100%" height="34" viewBox="0 0 200 34" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#C4912C" stroke-width="1.6" points="0,26 20,24 40,25 60,20 80,22 100,16 120,18 140,12 160,14 180,9 200,8"/>
+          </svg>
+        </div>
+        <div class="card tile">
+          <div class="lab">Weekly active</div>
+          <div class="big">1,880</div>
+          <div class="delta up">▲ 5.1%</div>
+          <svg class="spark" width="100%" height="34" viewBox="0 0 200 34" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#A8A49C" stroke-width="1.6" points="0,24 25,22 50,23 75,19 100,20 125,17 150,18 175,13 200,12"/>
+          </svg>
+        </div>
+        <div class="card tile">
+          <div class="lab">Monthly active</div>
+          <div class="big">3,120</div>
+          <div class="delta up">▲ 3.4%</div>
+          <svg class="spark" width="100%" height="34" viewBox="0 0 200 34" preserveAspectRatio="none">
+            <polyline fill="none" stroke="#A8A49C" stroke-width="1.6" points="0,22 25,21 50,20 75,20 100,18 125,18 150,16 175,15 200,15"/>
+          </svg>
+        </div>
+        <div class="card tile">
+          <div class="lab">Stickiness · DAU/MAU</div>
+          <div class="big gold">20.6%</div>
+          <div class="delta up">▲ 1.3 pts · target 20%</div>
+          <svg class="spark" width="100%" height="34" viewBox="0 0 200 34" preserveAspectRatio="none">
+            <line x1="0" y1="17" x2="200" y2="17" stroke="#2a2a2a" stroke-width="1" stroke-dasharray="3 3"/>
+            <polyline fill="none" stroke="#E8B44E" stroke-width="1.6" points="0,22 20,20 40,21 60,18 80,19 100,16 120,17 140,14 160,15 180,12 200,11"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="grid g2" style="margin-top:14px">
+        <div class="card pad">
+          <div class="chart-h"><span class="ct">Active users</span><span class="cs">DAU / MAU · last 30 days</span></div>
+          <svg width="100%" height="150" viewBox="0 0 620 150" preserveAspectRatio="none" style="margin-top:8px">
+            <defs><linearGradient id="mau" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#C4912C" stop-opacity=".22"/><stop offset="1" stop-color="#C4912C" stop-opacity="0"/></linearGradient>
+              <linearGradient id="dau" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#E8B44E" stop-opacity=".30"/><stop offset="1" stop-color="#E8B44E" stop-opacity="0"/></linearGradient></defs>
+            <line x1="0" y1="40" x2="620" y2="40" stroke="#1c1c1c"/><line x1="0" y1="80" x2="620" y2="80" stroke="#1c1c1c"/><line x1="0" y1="120" x2="620" y2="120" stroke="#1c1c1c"/>
+            <path d="M0,55 L60,52 L120,50 L180,48 L240,45 L300,44 L360,42 L420,40 L480,38 L540,36 L600,34 L620,34 L620,150 L0,150 Z" fill="url(#mau)"/>
+            <path d="M0,55 L60,52 L120,50 L180,48 L240,45 L300,44 L360,42 L420,40 L480,38 L540,36 L600,34 L620,34" fill="none" stroke="#C4912C" stroke-width="1.8"/>
+            <path d="M0,118 L60,112 L120,116 L180,104 L240,108 L300,96 L360,100 L420,88 L480,92 L540,80 L600,78 L620,76 L620,150 L0,150 Z" fill="url(#dau)"/>
+            <path d="M0,118 L60,112 L120,116 L180,104 L240,108 L300,96 L360,100 L420,88 L480,92 L540,80 L600,78 L620,76" fill="none" stroke="#E8B44E" stroke-width="1.8"/>
+            <circle cx="620" cy="76" r="3" fill="#E8B44E"/><circle cx="620" cy="34" r="3" fill="#C4912C"/>
+          </svg>
+          <div class="legend"><span><span class="dot" style="background:#E8B44E"></span>DAU</span><span><span class="dot" style="background:#C4912C"></span>MAU</span><span class="muted">Both trending up — stickiness holding above 20%.</span></div>
+        </div>
+        <div class="card pad">
+          <div class="chart-h"><span class="ct">Health snapshot</span></div>
+          <div class="row"><span class="k">On an active streak</span><span class="v">41.8% <span class="pill good">healthy</span></span></div>
+          <div class="row"><span class="k">Streak deaths · 7d</span><span class="v">118</span></div>
+          <div class="row"><span class="k">D1 retention</span><span class="v">44%</span></div>
+          <div class="row"><span class="k">D7 retention</span><span class="v">27% <span class="pill warn">watch</span></span></div>
+          <div class="row"><span class="k">Pro members</span><span class="v">412 · 4.9%</span></div>
+          <div class="row"><span class="k">Active trials</span><span class="v">63</span></div>
+        </div>
+      </div>
+
+      <div class="sec-t">Today</div>
+      <div class="grid g4">
+        <div class="card tile"><div class="lab">Lessons done</div><div class="big">1,204</div></div>
+        <div class="card tile"><div class="lab">Reviews done</div><div class="big">3,510</div></div>
+        <div class="card tile"><div class="lab">New signups</div><div class="big">86</div></div>
+        <div class="card tile"><div class="lab">New Pro</div><div class="big gold">7</div></div>
+      </div>
+    </section>
+
+    <!-- RETENTION -->
+    <section class="view" id="retention">
+      <div class="page-h">
+        <div><h1>Retention</h1></div>
+        <div class="range"><button>By day</button><button class="on">By week</button></div>
+      </div>
+      <p class="sub">How many come back — the number that decides everything else.</p>
+
+      <div class="grid g4">
+        <div class="card tile"><div class="lab">D1 return</div><div class="big">44%</div><div class="delta up">▲ 2 pts</div></div>
+        <div class="card tile"><div class="lab">D7 return</div><div class="big">27%</div><div class="delta down">▼ 1 pt</div></div>
+        <div class="card tile"><div class="lab">D30 return</div><div class="big">14%</div><div class="delta up">▲ 0.6 pt</div></div>
+        <div class="card tile"><div class="lab">Est. lifetime (median)</div><div class="big gold">23d</div></div>
+      </div>
+
+      <div class="grid g2" style="margin-top:14px">
+        <div class="card pad">
+          <div class="chart-h"><span class="ct">Retention curve</span><span class="cs">% still active on day N after signup</span></div>
+          <svg width="100%" height="180" viewBox="0 0 620 180" style="margin-top:8px">
+            <defs><linearGradient id="rc" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0" stop-color="#C4912C" stop-opacity=".28"/><stop offset="1" stop-color="#C4912C" stop-opacity="0"/></linearGradient></defs>
+            <!-- grid -->
+            <g stroke="#1c1c1c"><line x1="40" y1="20" x2="40" y2="150"/><line x1="40" y1="150" x2="610" y2="150"/>
+              <line x1="40" y1="40" x2="610" y2="40"/><line x1="40" y1="80" x2="610" y2="80"/><line x1="40" y1="120" x2="610" y2="120"/></g>
+            <g fill="#5C5A55" font-size="9" font-family="system-ui"><text x="10" y="24">100</text><text x="16" y="44">75</text><text x="16" y="84">50</text><text x="16" y="124">25</text>
+              <text x="40" y="165">D0</text><text x="150" y="165">D1</text><text x="300" y="165">D7</text><text x="460" y="165">D14</text><text x="585" y="165">D30</text></g>
+            <path d="M40,20 L150,92 C220,120 300,128 380,133 C470,138 560,141 610,142 L610,150 L40,150 Z" fill="url(#rc)"/>
+            <path d="M40,20 L150,92 C220,120 300,128 380,133 C470,138 560,141 610,142" fill="none" stroke="#E8B44E" stroke-width="2"/>
+            <circle cx="40" cy="20" r="3" fill="#E8B44E"/><circle cx="150" cy="92" r="3" fill="#E8B44E"/><circle cx="610" cy="142" r="3.5" fill="#E8B44E"/>
+          </svg>
+          <p class="capt">Curve flattens after ~D14 — the users who reach two weeks tend to stay. The drop to watch is D1→D7.</p>
+        </div>
+        <div class="card pad">
+          <div class="chart-h"><span class="ct">Retention by attribution</span><span class="cs">D7 return, by how they found Fides</span></div>
+          <div class="funnel" style="margin-top:10px">
+            <div class="fr"><span class="fk">TikTok</span><div class="ft"><div class="fb" style="width:82%"></div></div><span class="fv"><b>34%</b></span></div>
+            <div class="fr"><span class="fk">Friend / parish</span><div class="ft"><div class="fb" style="width:74%"></div></div><span class="fv"><b>31%</b></span></div>
+            <div class="fr"><span class="fk">App Store search</span><div class="ft"><div class="fb" style="width:58%"></div></div><span class="fv"><b>24%</b></span></div>
+            <div class="fr"><span class="fk">Instagram</span><div class="ft"><div class="fb" style="width:48%"></div></div><span class="fv"><b>20%</b></span></div>
+            <div class="fr"><span class="fk">Podcast ad</span><div class="ft"><div class="fb" style="width:40%"></div></div><span class="fv"><b>17%</b></span></div>
+          </div>
+          <p class="capt">Same channels also compared on Pro conversion in the Growth tab — highest volume isn't highest quality.</p>
+        </div>
+      </div>
+
+      <div class="card pad" style="margin-top:14px">
+        <div class="chart-h"><span class="ct">Weekly cohort heatmap</span><span class="cs">rows = signup week · columns = weeks since</span></div>
+        <div style="overflow-x:auto;margin-top:12px">
+          <table class="heat">
+            <thead><tr><th class="lab" style="text-align:left">Cohort</th><th>Size</th><th>W0</th><th>W1</th><th>W2</th><th>W3</th><th>W4</th><th>W6</th><th>W8</th></tr></thead>
+            <tbody>
+              <tr><td class="lab">Jun 23</td><td class="lab" style="text-align:center">610</td>
+                <td class="cell" style="background:#E8B44E">100</td><td class="cell" style="background:#c98f2e">38</td><td class="cell" style="background:#8f6626">29</td><td class="cell" style="background:#75531f">24</td><td class="cell" style="background:#63481c">21</td><td class="cell" style="background:#54401d">18</td><td class="cell" style="background:#4a3b1e">16</td></tr>
+              <tr><td class="lab">Jun 30</td><td class="lab" style="text-align:center">548</td>
+                <td class="cell" style="background:#E8B44E">100</td><td class="cell" style="background:#d1962f">40</td><td class="cell" style="background:#996b26">30</td><td class="cell" style="background:#7a561f">25</td><td class="cell" style="background:#684b1c">22</td><td class="cell" style="background:#57421d">19</td><td class="cell na">—</td></tr>
+              <tr><td class="lab">Jul 7</td><td class="lab" style="text-align:center">702</td>
+                <td class="cell" style="background:#E8B44E">100</td><td class="cell" style="background:#d99a30">42</td><td class="cell" style="background:#a4722a">32</td><td class="cell" style="background:#835b21">26</td><td class="cell" style="background:#6d4e1d">23</td><td class="cell na">—</td><td class="cell na">—</td></tr>
+              <tr><td class="lab">Jul 14</td><td class="lab" style="text-align:center">669</td>
+                <td class="cell" style="background:#E8B44E">100</td><td class="cell" style="background:#e2a233">45</td><td class="cell" style="background:#b07b2c">34</td><td class="cell" style="background:#8a6023">28</td><td class="cell na">—</td><td class="cell na">—</td><td class="cell na">—</td></tr>
+              <tr><td class="lab">Jul 21</td><td class="lab" style="text-align:center">640</td>
+                <td class="cell" style="background:#E8B44E">100</td><td class="cell" style="background:#e6a835">47</td><td class="cell" style="background:#b98230">36</td><td class="cell na">—</td><td class="cell na">—</td><td class="cell na">—</td><td class="cell na">—</td></tr>
+              <tr><td class="lab">Jul 28</td><td class="lab" style="text-align:center">715</td>
+                <td class="cell" style="background:#E8B44E">100</td><td class="cell" style="background:#eaad38">49</td><td class="cell na">—</td><td class="cell na">—</td><td class="cell na">—</td><td class="cell na">—</td><td class="cell na">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="legend"><span>Retention</span><span><span class="dot" style="background:#4a3b1e"></span>low</span><span><span class="dot" style="background:#a4722a"></span>mid</span><span><span class="dot" style="background:#E8B44E"></span>high</span><span class="muted" style="margin-left:auto">Newer cohorts (Jul 14+) retaining W1 better — onboarding change landing.</span></div>
+      </div>
+    </section>
+
+    <!-- ENGAGEMENT -->
+    <section class="view" id="engagement">
+      <div class="page-h"><div><h1>Engagement</h1></div></div>
+      <p class="sub">Notifications, offers, and league competition — the 1.4.1 loops.</p>
+
+      <div class="grid g2">
+        <div class="card pad">
+          <div class="chart-h"><span class="ct">Win-back offer funnel</span><span class="cs">last 30d · notification_offer</span></div>
+          <div class="funnel" style="margin-top:12px">
+            <div class="fr"><span class="fk">Push sent</span><div class="ft"><div class="fb" style="width:100%"></div></div><span class="fv"><b>2,140</b></span></div>
+            <div class="fr"><span class="fk">Tapped</span><div class="ft"><div class="fb" style="width:31%"></div></div><span class="fv"><b>663</b> <span class="pct">31%</span></span></div>
+            <div class="fr"><span class="fk">Opened paywall</span><div class="ft"><div class="fb" style="width:26%"></div></div><span class="fv"><b>556</b> <span class="pct">84%</span></span></div>
+            <div class="fr"><span class="fk">Converted to Pro</span><div class="ft"><div class="fb" style="width:6%"></div></div><span class="fv"><b>128</b> <span class="pct">6.0%</span></span></div>
+          </div>
+          <p class="capt">Median time to convert: 1.4 days. Smart-timing sends convert 1.7× the fixed-hour baseline.</p>
+        </div>
+        <div class="card pad">
+          <div class="chart-h"><span class="ct">Notification opt-in</span><span class="cs">% of users with each kind on</span></div>
+          <div class="funnel" style="margin-top:12px">
+            <div class="fr"><span class="fk">Daily verse</span><div class="ft"><div class="fb" style="width:71%"></div></div><span class="fv"><b>71%</b></span></div>
+            <div class="fr"><span class="fk">Review ready</span><div class="ft"><div class="fb" style="width:64%"></div></div><span class="fv"><b>64%</b></span></div>
+            <div class="fr"><span class="fk">Saint of day</span><div class="ft"><div class="fb" style="width:58%"></div></div><span class="fv"><b>58%</b></span></div>
+            <div class="fr"><span class="fk">League updates</span><div class="ft"><div class="fb" style="width:52%"></div></div><span class="fv"><b>52%</b></span></div>
+            <div class="fr"><span class="fk">Comeback nudge</span><div class="ft"><div class="fb" style="width:47%"></div></div><span class="fv"><b>47%</b></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card pad" style="margin-top:14px">
+        <div class="chart-h"><span class="ct">League competition</span><span class="cs">this week · promotion / relegation flow</span></div>
+        <div class="grid g4" style="margin-top:12px">
+          <div class="tile"><div class="lab">Active competitors</div><div class="big" style="font-size:28px">1,540</div></div>
+          <div class="tile"><div class="lab">Promoted last wk</div><div class="big" style="font-size:28px">312</div></div>
+          <div class="tile"><div class="lab">Relegated</div><div class="big" style="font-size:28px">288</div></div>
+          <div class="tile"><div class="lab">Human vs bot pace</div><div class="big gold" style="font-size:28px">1.04×</div></div>
+        </div>
+        <p class="capt">Cohorts filling to ~30 as designed; humans outpacing bot targets slightly (healthy — bots aren't dominating).</p>
+      </div>
+    </section>
+
+    <!-- GROWTH stub -->
+    <section class="view" id="growth">
+      <div class="page-h"><div><h1>Growth</h1></div></div>
+      <p class="sub">Activation funnel · attribution channel quality · churn — kept, with attribution quality added.</p>
+      <div class="note"><b>Existing tab, extended.</b> Today's activation funnel + churn stay; new: a channel-quality table comparing each attribution source on volume, D7 retention, and Pro conversion side by side.</div>
+      <div class="card pad">
+        <div class="chart-h"><span class="ct">Channel quality</span><span class="cs">volume vs. what the channel is worth</span></div>
+        <table class="heat" style="border-spacing:0;width:100%;margin-top:12px">
+          <thead><tr><th class="lab" style="text-align:left;padding-bottom:8px">Source</th><th style="text-align:right">Signups</th><th style="text-align:right">D7 ret.</th><th style="text-align:right">Pro conv.</th><th style="text-align:right">Verdict</th></tr></thead>
+          <tbody style="font-size:13px">
+            <tr><td class="lab">App Store search</td><td style="text-align:right">2,410</td><td style="text-align:right">24%</td><td style="text-align:right">5.8%</td><td style="text-align:right"><span class="pill gold">volume</span></td></tr>
+            <tr><td class="lab">TikTok</td><td style="text-align:right">1,980</td><td style="text-align:right">34%</td><td style="text-align:right">4.1%</td><td style="text-align:right"><span class="pill good">sticky</span></td></tr>
+            <tr><td class="lab">Friend / parish</td><td style="text-align:right">1,120</td><td style="text-align:right">31%</td><td style="text-align:right">7.9%</td><td style="text-align:right"><span class="pill good">best</span></td></tr>
+            <tr><td class="lab">Instagram</td><td style="text-align:right">890</td><td style="text-align:right">20%</td><td style="text-align:right">3.2%</td><td style="text-align:right"><span class="pill warn">weak</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="view" id="revenue">
+      <div class="page-h"><div><h1>Revenue</h1></div></div>
+      <p class="sub">Unchanged — existing Revenue tab (Superwall funnels, trials, profit estimate).</p>
+      <div class="note">This tab stays as-is. Shown here only so the full analytics nav is visible.</div>
+    </section>
+  </main>
+</div>
+
+<script>
+  const navs=document.querySelectorAll('.nav[data-v]');
+  navs.forEach(n=>n.addEventListener('click',()=>{
+    navs.forEach(x=>x.classList.remove('active'));n.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+    document.getElementById(n.dataset.v).classList.add('on');
+    window.scrollTo(0,0);
+  }));
+</script>
