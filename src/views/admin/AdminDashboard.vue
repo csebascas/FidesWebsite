@@ -80,6 +80,30 @@
       </div>
     </div>
 
+    <!-- Subscriptions — real payers vs grants/trials, not the inflated "Pro" count -->
+    <h2 v-if="subs" class="section-title rise" style="--i: 2">Subscriptions</h2>
+    <div v-if="subs" class="ns-grid rise" style="--i: 2">
+      <div class="ns-tile">
+        <span class="ns-l">Est. MRR</span>
+        <span class="ns-n gold">${{ (subs.mrr ?? 0).toLocaleString() }}</span>
+        <span class="tile-sub" v-if="subs.arpu">${{ subs.arpu }} ARPU</span>
+      </div>
+      <div class="ns-tile">
+        <span class="ns-l">Paying subs</span>
+        <span class="ns-n">{{ subs.active_paying ?? '—' }}</span>
+        <span class="tile-sub">{{ subs.pay_monthly }}mo · {{ subs.pay_yearly }}yr</span>
+      </div>
+      <div class="ns-tile">
+        <span class="ns-l">On trial</span>
+        <span class="ns-n">{{ subs.active_trial ?? '—' }}</span>
+      </div>
+      <div class="ns-tile">
+        <span class="ns-l">Granted Pro</span>
+        <span class="ns-n">{{ subs.active_granted ?? '—' }}</span>
+        <span class="tile-sub" v-if="subs.total_pro">of {{ subs.total_pro }} total Pro</span>
+      </div>
+    </div>
+
     <!-- Today -->
     <h2 class="section-title rise" style="--i: 2">Today</h2>
     <div class="ns-grid rise" style="--i: 2">
@@ -202,6 +226,7 @@ import LineChart from '../../components/charts/LineChart.vue'
 const loading = ref(true)
 const loadError = ref('')
 const alerts = ref<Array<{ metric: string; severity: string; message: string }>>([])
+const subs = ref<any>(null)
 const stats = ref<any>({})
 const contentCounts = ref<any>({})
 const topLessons = ref<any[]>([])
@@ -339,9 +364,17 @@ async function loadAlerts() {
   } catch { /* alerts are best-effort; never block the page */ }
 }
 
+async function loadSubs() {
+  try {
+    const res = await cachedFetch('/api/dashboard?view=subscriptions')
+    if (res.ok) subs.value = await res.json()
+  } catch { /* best-effort */ }
+}
+
 onMounted(async () => {
   await load()
   loadAlerts()
+  loadSubs()
   await loadRetention()
 })
 </script>
@@ -443,6 +476,7 @@ onMounted(async () => {
 .ns-l { font-family: var(--sans); font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-3); }
 .ns-n { font-family: var(--sans); font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
 .ns-n.gold { color: var(--gold-light); }
+.tile-sub { font-family: var(--sans); font-size: 10px; color: var(--text-3); margin-top: 1px; }
 
 /* DAU/MAU chart card */
 .chart-card { background: var(--surface); border-radius: 10px; padding: 16px 18px 14px; margin-bottom: 26px; }

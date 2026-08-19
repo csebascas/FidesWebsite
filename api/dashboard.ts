@@ -167,7 +167,80 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(data);
     }
 
-    // ?view=alerts powers the Overview anomaly banner. Rather than a Postgres
+    const PRICE_MONTHLY = 6.99;
+const PRICE_YEARLY_PER_MONTH = 59.99 / 12;
+
+function planOf(productId: string | null): 'yearly' | 'monthly' {
+  const p = (productId || '').toLowerCase();
+  if (p.includes('year') || p.includes('annual')) return 'yearly';
+  return 'monthly';
+}
+
+// Separate real payers from grants/trials and estimate MRR. subscription_events
+// (App Store + Play) is the source of truth for money; a Pro user with no
+// production purchase is a grant. Prices are approximate (plan inferred from
+// product_id) — the Revenue tab has exact Superwall figures.
+function computeSubscriptions(events: any[], proUsers: any[]) {
+  // Per-user rollup of their production purchase history.
+  const byUser = new Map<string, { hasNormal: boolean; hasTrial: boolean; plan: 'yearly' | 'monthly'; latest: number }>();
+  for (const e of events) {
+    const uid = e.user_id;
+    if (!uid) continue;
+    const t = new Date(e.occurred_at).getTime();
+    const cur = byUser.get(uid) || { hasNormal: false, hasTrial: false, plan: 'monthly' as const, latest: 0 };
+    const isNormal = String(e.period_type).toUpperCase() === 'NORMAL';
+    cur.hasNormal = cur.hasNormal || isNormal;
+    cur.hasTrial = cur.hasTrial || String(e.period_type).toUpperCase() === 'TRIAL';
+    if (Number.isFinite(t) && t >= cur.latest) {
+      cur.latest = t;
+      cur.plan = planOf(e.product_id);
+    }
+    byUser.set(uid, cur);
+  }
+
+  const now = Date.now();
+  let paying = 0, trial = 0, granted = 0, lapsed = 0, payMonthly = 0, payYearly = 0, mrr = 0;
+
+  for (const u of proUsers) {
+    const active =
+      u.has_lifetime_pro === true ||
+      (u.subscription_expires_at != null && new Date(u.subscription_expires_at).getTime() > now);
+    if (!active) {
+      lapsed++;
+      continue;
+    }
+    const hist = byUser.get(u.id);
+    if (hist?.hasNormal) {
+      paying++;
+      if (hist.plan === 'yearly') {
+        payYearly++;
+        mrr += PRICE_YEARLY_PER_MONTH;
+      } else {
+        payMonthly++;
+        mrr += PRICE_MONTHLY;
+      }
+    } else if (hist?.hasTrial) {
+      trial++;
+    } else {
+      granted++;
+    }
+  }
+
+  const total = proUsers.length;
+  return {
+    total_pro: total,
+    active_paying: paying,
+    active_trial: trial,
+    active_granted: granted,
+    lapsed_pro: lapsed,
+    pay_monthly: payMonthly,
+    pay_yearly: payYearly,
+    mrr: Math.round(mrr),
+    arpu: paying > 0 ? Math.round((mrr / paying) * 100) / 100 : 0,
+  };
+}
+
+// ?view=alerts powers the Overview anomaly banner. Rather than a Postgres
     // RPC (which would only reach prod on a separate Fides-repo merge), it
     // fetches recent timestamps directly and buckets them in JS, so it ships
     // live with this app. Weekly smoothing (last 7 full days vs the trailing
@@ -200,6 +273,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ].filter((a): a is Alert => a !== null);
 
         return { alerts };
+      });
+      res.setHeader('Cache-Control', 'private, max-age=30');
+      return res.status(200).json(data);
+    }
+
+    // ?view=subscriptions powers the Overview's honest revenue tiles. "Pro
+    // users" (subscription_tier='pro') lumps together real payers, free
+    // referral grants, lifetime grants, and trial users — overstating paid
+    // conversion ~2.5x. This separates them from the source of truth
+    // (subscription_events = real App Store / Play activity) and estimates MRR
+    // from the plan encoded in product_id. Computed in JS from a small table.
+    if (view === 'subscriptions') {
+      const data = await cached('subscriptions', async () => {
+        const [events, pro] = await Promise.all([
+          supabase
+            .from('subscription_events')
+            .select('user_id, event, product_id, period_type, occurred_at')
+            .eq('environment', 'PRODUCTION'),
+          supabase
+            .from('users')
+            .select('id, subscription_expires_at, has_lifetime_pro, referral_pro_days_lifetime')
+            .eq('subscription_tier', 'pro')
+            .eq('is_bot', false)
+            .is('deleted_at', null),
+        ]);
+        if (events.error) throw events.error;
+        if (pro.error) throw pro.error;
+        return computeSubscriptions(events.data ?? [], pro.data ?? []);
       });
       res.setHeader('Cache-Control', 'private, max-age=30');
       return res.status(200).json(data);
