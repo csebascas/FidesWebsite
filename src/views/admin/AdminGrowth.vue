@@ -129,6 +129,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { cachedFetch } from '../../lib/apiCache'
 
 const loading = ref(true)
 const error = ref('')
@@ -212,7 +213,7 @@ function featPct(v: number): number {
 }
 onMounted(async () => {
   try {
-    const res = await fetch('/api/dashboard?view=growth')
+    const res = await cachedFetch('/api/dashboard?view=growth')
     if (!res.ok) { error.value = 'Failed to load growth data.'; loading.value = false; return }
     const d = await res.json()
     funnel.value = d.funnel ?? {}
@@ -223,7 +224,7 @@ onMounted(async () => {
     // Channel quality is secondary: a failure degrades to an empty/error panel
     // rather than blanking the whole Growth tab.
     try {
-      const ares = await fetch('/api/dashboard?view=attribution')
+      const ares = await cachedFetch('/api/dashboard?view=attribution')
       if (ares.ok) attribution.value = (await ares.json()) ?? []
       else attributionError.value = true
     } catch { attributionError.value = true }

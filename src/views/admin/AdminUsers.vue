@@ -1,7 +1,7 @@
 <template>
   <div class="users-page">
     <div class="page-header">
-      <h1 class="page-title">Users <span v-if="users.length" class="row-count">({{ users.length }})</span></h1>
+      <h1 class="page-title">Users <span v-if="users.length" class="row-count">({{ users.length >= 500 ? 'first 500' : users.length }})</span></h1>
       <div class="filter-bar">
         <select v-model="tierFilter" class="filter-select">
           <option value="">All tiers</option>

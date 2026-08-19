@@ -188,6 +188,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { cachedFetch } from '../../lib/apiCache'
 import Sparkline from '../../components/charts/Sparkline.vue'
 import LineChart from '../../components/charts/LineChart.vue'
 
@@ -284,7 +285,7 @@ async function load() {
   loading.value = true
   loadError.value = ''
   try {
-    const res = await fetch('/api/dashboard')
+    const res = await cachedFetch('/api/dashboard')
     if (!res.ok) {
       // Surface the failure instead of silently blanking the whole page to '—'.
       const body = await res.json().catch(() => ({}))
@@ -312,7 +313,7 @@ async function load() {
 // page — the north-star tiles above already rendered from the primary fetch.
 async function loadRetention() {
   try {
-    const res = await fetch('/api/dashboard?view=retention')
+    const res = await cachedFetch('/api/dashboard?view=retention')
     if (res.ok) {
       const d = await res.json()
       dauMau.value = d.dau_mau || []
