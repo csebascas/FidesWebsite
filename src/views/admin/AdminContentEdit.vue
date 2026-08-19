@@ -252,6 +252,12 @@
                   <span class="xp-label">XP</span>
                 </div>
               </div>
+              <GenericStepPreview
+                v-else-if="previewSchema(stepType)"
+                :step="step"
+                :schema="previewSchema(stepType)!.fields"
+                :label="previewSchema(stepType)!.label"
+              />
               <pre v-else class="preview-json">{{ JSON.stringify(step, null, 2) }}</pre>
             </div>
           </div>
@@ -400,6 +406,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { adminRpc } from '../../lib/supabase'
 import StepEditor from '../../components/StepEditor.vue'
 import BlockEditor from '../../components/BlockEditor.vue'
+import GenericStepPreview from '../../components/GenericStepPreview.vue'
+import { STEP_SCHEMAS, type StepSchema } from '../../lib/stepSchemas'
+
+// Schema-backed preview for step types without a bespoke phone-preview branch.
+function previewSchema(type: string): StepSchema | undefined {
+  return STEP_SCHEMAS[type]
+}
 
 const route = useRoute()
 const router = useRouter()
