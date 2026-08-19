@@ -28,6 +28,32 @@
         </div>
       </div>
 
+      <!-- Acquisition funnel (30-day signup cohort) -->
+      <div class="section" v-if="acquisition">
+        <h2 class="section-title">Acquisition funnel · last 30 days</h2>
+        <div class="funnel">
+          <div v-for="s in acqSteps" :key="s.key" class="funnel-row">
+            <span class="fl-label">{{ s.label }}</span>
+            <div class="fl-bar-wrap"><div class="fl-bar" :style="{ width: acqPct(s.value) + '%' }"></div></div>
+            <span class="fl-val">{{ s.value }}</span>
+            <span class="fl-pct" :class="{ warn: s.warn }">{{ acqPct(s.value) }}%</span>
+          </div>
+        </div>
+        <p class="hint">{{ acquisition.downloads_partial }} landing-page clicks in the same window — partial (App Store search + paid installs aren't tracked here), so signups is the true funnel base.</p>
+      </div>
+
+      <!-- Content → retention: which tracks retain -->
+      <div class="section" v-if="contentTracks.length">
+        <h2 class="section-title">Which content retains · W1 return by first-week track</h2>
+        <div v-for="t in contentTracks" :key="t.track_name" class="cr-row">
+          <span class="cr-name">{{ t.track_name }}</span>
+          <div class="bar-wrap"><div class="bar" :class="ragBar(t.w1_return_pct)" :style="{ width: Math.min(100, Number(t.w1_return_pct)) + '%' }"></div></div>
+          <span class="cr-pct">{{ t.w1_return_pct }}%</span>
+          <span class="cr-users">{{ t.users_touched_wk1 }}u</span>
+        </div>
+        <p class="hint">Of users who touched each track in their first 7 days, the share who returned on a later day. A low intro-track number is the cliff — get users into a real track faster.</p>
+      </div>
+
       <!-- Benchmarks -->
       <div class="section">
         <h2 class="section-title">How we compare · industry reference</h2>
@@ -140,6 +166,29 @@ const features = ref<any>({})
 const churn = ref<any>({})
 const attribution = ref<any[]>([])
 const attributionError = ref(false)
+const acquisition = ref<any>(null)
+const contentRetention = ref<any>(null)
+
+const contentTracks = computed(() => contentRetention.value?.tracks ?? [])
+const acqSteps = computed(() => {
+  const a = acquisition.value || {}
+  return [
+    { key: 'signups', label: 'Signed up', value: a.signups },
+    { key: 'activated', label: 'Completed 1 lesson', value: a.activated },
+    { key: 'returned_w1', label: 'Returned within week 1', value: a.returned_w1, warn: true },
+    { key: 'paid', label: 'Started paying', value: a.paid },
+  ]
+})
+function acqPct(v: number): number {
+  const base = Number(acquisition.value?.signups || 0)
+  return base ? Math.round((Number(v) / base) * 100) : 0
+}
+function ragBar(v: any): string {
+  const n = Number(v)
+  if (n >= 60) return 'good'
+  if (n >= 45) return 'mid'
+  return 'bad'
+}
 
 const channelRows = computed(() => [...(attribution.value || [])].sort((a, b) => Number(b.signups ?? 0) - Number(a.signups ?? 0)))
 function verdictClass(v: string): string {
@@ -228,6 +277,16 @@ onMounted(async () => {
       if (ares.ok) attribution.value = (await ares.json()) ?? []
       else attributionError.value = true
     } catch { attributionError.value = true }
+    // Acquisition funnel + content retention are secondary; a missing RPC (not
+    // yet live in prod) just hides those sections rather than erroring the tab.
+    try {
+      const [acq, cret] = await Promise.all([
+        cachedFetch('/api/dashboard?view=acquisition'),
+        cachedFetch('/api/dashboard?view=content-retention'),
+      ])
+      if (acq.ok) acquisition.value = await acq.json()
+      if (cret.ok) contentRetention.value = await cret.json()
+    } catch { /* sections stay hidden */ }
   } catch { error.value = 'Network error.' } finally { loading.value = false }
 })
 </script>
@@ -273,6 +332,15 @@ onMounted(async () => {
 .bar-wrap { height: 18px; background: var(--surface); border-radius: 5px; overflow: hidden; }
 .bar { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold-light)); border-radius: 5px; }
 .bar.dead { background: #4a3a3a; }
+.bar.good { background: #34C759; }
+.bar.mid { background: var(--gold); }
+.bar.bad { background: #D4673A; }
+
+/* Content → retention rows (wider label + user count than the streak bars) */
+.cr-row { display: grid; grid-template-columns: 150px 1fr 44px 40px; align-items: center; gap: 10px; margin-bottom: 8px; }
+.cr-name { font-family: var(--sans); font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cr-pct { font-family: var(--sans); font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; text-align: right; }
+.cr-users { font-family: var(--sans); font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; text-align: right; }
 .bc { font-family: var(--sans); font-size: 12px; color: var(--text); font-variant-numeric: tabular-nums; }
 
 .mini-table { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 13px; }

@@ -5,6 +5,13 @@
       <div class="date">{{ today }}</div>
     </header>
 
+    <!-- Anomaly alerts — surface metric collapses (signups/purchases/downloads) -->
+    <div v-for="a in alerts" :key="a.metric" class="alert-banner rise" :class="a.severity" style="--i: 0">
+      <span class="alert-dot"></span>
+      <span class="alert-msg">{{ a.message }}</span>
+      <span class="alert-tag">{{ a.severity === 'red' ? 'Alert' : 'Watch' }}</span>
+    </div>
+
     <!-- Load error banner — never blank the page silently -->
     <div v-if="loadError" class="err-banner rise" style="--i: 0">
       <span class="err-dot"></span>
@@ -70,6 +77,30 @@
       <div class="legend">
         <span><span class="dot" style="background:#E8B44E"></span>DAU</span>
         <span><span class="dot" style="background:#C4912C"></span>MAU</span>
+      </div>
+    </div>
+
+    <!-- Subscriptions — real payers vs grants/trials, not the inflated "Pro" count -->
+    <h2 v-if="subs" class="section-title rise" style="--i: 2">Subscriptions</h2>
+    <div v-if="subs" class="ns-grid rise" style="--i: 2">
+      <div class="ns-tile">
+        <span class="ns-l">Est. MRR</span>
+        <span class="ns-n gold">${{ (subs.mrr ?? 0).toLocaleString() }}</span>
+        <span class="tile-sub" v-if="subs.arpu">${{ subs.arpu }} ARPU</span>
+      </div>
+      <div class="ns-tile">
+        <span class="ns-l">Paying subs</span>
+        <span class="ns-n">{{ subs.active_paying ?? '—' }}</span>
+        <span class="tile-sub">{{ subs.pay_monthly }}mo · {{ subs.pay_yearly }}yr</span>
+      </div>
+      <div class="ns-tile">
+        <span class="ns-l">On trial</span>
+        <span class="ns-n">{{ subs.active_trial ?? '—' }}</span>
+      </div>
+      <div class="ns-tile">
+        <span class="ns-l">Granted Pro</span>
+        <span class="ns-n">{{ subs.active_granted ?? '—' }}</span>
+        <span class="tile-sub" v-if="subs.total_pro">of {{ subs.total_pro }} total Pro</span>
       </div>
     </div>
 
@@ -194,6 +225,8 @@ import LineChart from '../../components/charts/LineChart.vue'
 
 const loading = ref(true)
 const loadError = ref('')
+const alerts = ref<Array<{ metric: string; severity: string; message: string }>>([])
+const subs = ref<any>(null)
 const stats = ref<any>({})
 const contentCounts = ref<any>({})
 const topLessons = ref<any[]>([])
@@ -321,14 +354,45 @@ async function loadRetention() {
   } catch { /* leave dauMau empty */ }
 }
 
+async function loadAlerts() {
+  try {
+    const res = await cachedFetch('/api/dashboard?view=alerts')
+    if (res.ok) {
+      const d = await res.json()
+      alerts.value = d.alerts || []
+    }
+  } catch { /* alerts are best-effort; never block the page */ }
+}
+
+async function loadSubs() {
+  try {
+    const res = await cachedFetch('/api/dashboard?view=subscriptions')
+    if (res.ok) subs.value = await res.json()
+  } catch { /* best-effort */ }
+}
+
 onMounted(async () => {
   await load()
+  loadAlerts()
+  loadSubs()
   await loadRetention()
 })
 </script>
 
 <style scoped>
 .dashboard { max-width: 1080px; }
+
+/* Anomaly banners — a metric collapse should be impossible to miss */
+.alert-banner {
+  display: flex; align-items: center; gap: 10px;
+  border-radius: 10px; padding: 11px 16px; margin-bottom: 10px;
+  font-family: var(--sans); font-size: 12.5px; font-weight: 500;
+}
+.alert-banner.red { background: rgba(255, 59, 48, 0.10); color: #FF6B60; }
+.alert-banner.amber { background: rgba(212, 145, 44, 0.12); color: var(--gold-light); }
+.alert-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; } /* eslint-disable-line no-restricted-syntax */
+.alert-msg { flex: 1; min-width: 0; }
+.alert-tag { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; opacity: 0.85; flex-shrink: 0; }
 
 /* Load-error banner — surfaces a failed fetch instead of a silent page of '—' */
 .err-banner {
@@ -412,6 +476,7 @@ onMounted(async () => {
 .ns-l { font-family: var(--sans); font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-3); }
 .ns-n { font-family: var(--sans); font-size: 22px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); }
 .ns-n.gold { color: var(--gold-light); }
+.tile-sub { font-family: var(--sans); font-size: 10px; color: var(--text-3); margin-top: 1px; }
 
 /* DAU/MAU chart card */
 .chart-card { background: var(--surface); border-radius: 10px; padding: 16px 18px 14px; margin-bottom: 26px; }
