@@ -278,6 +278,31 @@ function computeSubscriptions(events: any[], proUsers: any[]) {
       return res.status(200).json(data);
     }
 
+    // ?view=acquisition serves the Growth tab's acquisition funnel
+    // (signup -> activation -> W1 return -> paid). Backed by the
+    // admin_acquisition_funnel RPC (Fides migration); shows a friendly error
+    // until that migration is live in prod.
+    if (view === 'acquisition') {
+      const data = await cached('acquisition', async () => {
+        const { data, error } = await supabase.rpc('admin_acquisition_funnel', { p_days: 30 });
+        if (error) throw error;
+        return data;
+      });
+      res.setHeader('Cache-Control', 'private, max-age=30');
+      return res.status(200).json(data);
+    }
+
+    // ?view=content-retention serves the Growth tab's per-track W1 return table.
+    if (view === 'content-retention') {
+      const data = await cached('content-retention', async () => {
+        const { data, error } = await supabase.rpc('admin_content_retention', { p_days: 60 });
+        if (error) throw error;
+        return data;
+      });
+      res.setHeader('Cache-Control', 'private, max-age=30');
+      return res.status(200).json(data);
+    }
+
     // ?view=subscriptions powers the Overview's honest revenue tiles. "Pro
     // users" (subscription_tier='pro') lumps together real payers, free
     // referral grants, lifetime grants, and trial users — overstating paid
