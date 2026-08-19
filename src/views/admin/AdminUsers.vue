@@ -1,7 +1,7 @@
 <template>
   <div class="users-page">
     <div class="page-header">
-      <h1 class="page-title">Users <span v-if="users.length" class="row-count">({{ users.length >= 500 ? 'first 500' : users.length }})</span></h1>
+      <h1 class="page-title">Users <span v-if="totalUsers" class="row-count">({{ totalUsers.toLocaleString() }}<template v-if="totalUsers > users.length"> · showing {{ users.length }}</template>)</span></h1>
       <div class="filter-bar">
         <select v-model="tierFilter" class="filter-select">
           <option value="">All tiers</option>
@@ -165,6 +165,7 @@ import { adminRpc } from '../../lib/supabase'
 const route = useRoute()
 
 const users = ref<any[]>([])
+const totalUsers = ref(0)
 const loading = ref(true)
 const search = ref('')
 const tierFilter = ref('')
@@ -281,11 +282,12 @@ function openFromQuery() {
 watch(() => route.query.user, openFromQuery)
 
 onMounted(async () => {
-  const { data } = await adminRpc({
+  const { data, count } = await adminRpc({
     action: 'select', table: 'users',
     order: { column: 'created_at', ascending: false }, limit: 500,
   })
   users.value = data ?? []
+  totalUsers.value = count ?? (data?.length ?? 0)
   loading.value = false
   openFromQuery()
 })

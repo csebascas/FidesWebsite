@@ -28,7 +28,7 @@ export async function adminRpc(body: {
   select?: string
   order?: { column: string; ascending?: boolean }
   limit?: number
-}): Promise<{ data?: any; error?: string }> {
+}): Promise<{ data?: any; count?: number | null; error?: string }> {
   try {
     const res = await fetch('/api/admin/rpc', {
       method: 'POST',
@@ -37,7 +37,7 @@ export async function adminRpc(body: {
     })
     const json = await res.json()
     if (!res.ok) return { error: json.error || res.statusText }
-    return { data: json.data }
+    return { data: json.data, count: json.count }
   } catch (e: any) {
     return { error: e.message || 'Network error' }
   }

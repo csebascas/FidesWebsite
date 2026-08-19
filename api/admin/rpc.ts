@@ -158,7 +158,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (typeof select === 'string' && /[()]/.test(select)) {
         return res.status(400).json({ error: 'select must be a plain column list' });
       }
-      let query = supabase.from(tableName).select(select || '*');
+      // Request an exact count so callers can show the true total even when
+      // the returned rows are capped by `limit` (e.g. the Users list shows
+      // "1,017" while only rendering the first 500 rows).
+      let query = supabase.from(tableName).select(select || '*', { count: 'exact' });
       if (match) {
         for (const [key, val] of Object.entries(match)) {
           query = query.eq(key, val);
