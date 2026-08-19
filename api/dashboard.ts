@@ -23,6 +23,48 @@ async function cached<T>(key: string, fn: () => Promise<T>): Promise<T> {
   return data;
 }
 
+interface Alert {
+  metric: string;
+  severity: 'red' | 'amber';
+  current: number; // last 7 full days
+  baseline: number; // typical week (avg of the prior three 7-day blocks)
+  pctChange: number; // negative = drop
+  message: string;
+}
+
+// Weekly anomaly check: compare the last 7 full UTC days against the average
+// of the three preceding weeks. Returns an alert only for a meaningful DROP,
+// and only when there's enough history to judge — so it stays quiet in normal
+// operation and speaks up when a metric collapses.
+function buildAlert(metric: string, isoTimestamps: string[]): Alert | null {
+  const dayMs = 86400000;
+  const startOfTodayUTC = Math.floor(Date.now() / dayMs) * dayMs;
+  const blocks = [0, 1, 2, 3].map((i) => {
+    const hi = startOfTodayUTC - i * 7 * dayMs;
+    return { lo: hi - 7 * dayMs, hi, count: 0 };
+  });
+  for (const ts of isoTimestamps) {
+    const t = new Date(ts).getTime();
+    if (!Number.isFinite(t)) continue;
+    for (const b of blocks) {
+      if (t >= b.lo && t < b.hi) {
+        b.count++;
+        break;
+      }
+    }
+  }
+  const current = blocks[0].count;
+  const prior = [blocks[1], blocks[2], blocks[3]];
+  const baseline = prior.reduce((s, b) => s + b.count, 0) / prior.length;
+  if (baseline < 3) return null; // too little history to call it an anomaly
+  const pctChange = (current - baseline) / baseline;
+  if (pctChange > -0.3) return null; // only surface real drops
+  const severity: 'red' | 'amber' = pctChange <= -0.5 ? 'red' : 'amber';
+  const pct = Math.round(Math.abs(pctChange) * 100);
+  const message = `${metric} down ${pct}% this week (${current} vs ~${Math.round(baseline)} typical).`;
+  return { metric, severity, current, baseline: Math.round(baseline), pctChange, message };
+}
+
 // One call for the whole dashboard — the heavy lifting happens in the
 // admin_dashboard_data() Postgres function instead of ~15 browser queries.
 // ?view=revenue serves the Revenue tab from the same function (Hobby plan
@@ -120,6 +162,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { data, error } = await supabase.rpc('admin_attribution_data', { p_days: 90 });
         if (error) throw error;
         return data;
+      });
+      res.setHeader('Cache-Control', 'private, max-age=30');
+      return res.status(200).json(data);
+    }
+
+    // ?view=alerts powers the Overview anomaly banner. Rather than a Postgres
+    // RPC (which would only reach prod on a separate Fides-repo merge), it
+    // fetches recent timestamps directly and buckets them in JS, so it ships
+    // live with this app. Weekly smoothing (last 7 full days vs the trailing
+    // 3-week average) avoids day-of-week noise and partial-day undercounting —
+    // exactly the kind of drop (signups/purchases collapsing) that otherwise
+    // runs for days unnoticed.
+    if (view === 'alerts') {
+      const data = await cached('alerts', async () => {
+        const since = new Date(Date.now() - 35 * 86400000).toISOString();
+        const [signups, purchases, downloads] = await Promise.all([
+          supabase
+            .from('users')
+            .select('created_at')
+            .eq('is_bot', false)
+            .is('deleted_at', null)
+            .gte('created_at', since),
+          supabase
+            .from('subscription_events')
+            .select('occurred_at')
+            .eq('event', 'initial_purchase')
+            .eq('environment', 'PRODUCTION')
+            .gte('occurred_at', since),
+          supabase.from('download_clicks').select('created_at').gte('created_at', since),
+        ]);
+
+        const alerts = [
+          buildAlert('New signups', (signups.data ?? []).map((r: any) => r.created_at)),
+          buildAlert('New paid subscriptions', (purchases.data ?? []).map((r: any) => r.occurred_at)),
+          buildAlert('Download-page clicks', (downloads.data ?? []).map((r: any) => r.created_at)),
+        ].filter((a): a is Alert => a !== null);
+
+        return { alerts };
       });
       res.setHeader('Cache-Control', 'private, max-age=30');
       return res.status(200).json(data);
