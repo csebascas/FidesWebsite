@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { cachedFetch } from '../../lib/apiCache'
 import LineChart from '../../components/charts/LineChart.vue'
 import CohortHeatmap from '../../components/charts/CohortHeatmap.vue'
 import FunnelBars from '../../components/charts/FunnelBars.vue'
@@ -89,7 +90,7 @@ const cohortRows = computed(() =>
 
 onMounted(async () => {
   try {
-    const res = await fetch('/api/dashboard?view=retention')
+    const res = await cachedFetch('/api/dashboard?view=retention')
     if (!res.ok) { error.value = 'Failed to load retention data.'; loading.value = false; return }
     const d = await res.json()
     headline.value = d.headline ?? {}
@@ -98,7 +99,7 @@ onMounted(async () => {
     // Attribution is secondary: a failure degrades to an empty panel rather
     // than blanking the whole page.
     try {
-      const ares = await fetch('/api/dashboard?view=attribution')
+      const ares = await cachedFetch('/api/dashboard?view=attribution')
       if (ares.ok) attribution.value = (await ares.json()) ?? []
     } catch { /* leave attribution empty */ }
   } catch { error.value = 'Network error.' } finally { loading.value = false }

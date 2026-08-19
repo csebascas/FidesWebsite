@@ -5,6 +5,29 @@
       <div class="date">{{ today }}</div>
     </header>
 
+    <!-- Load error banner — never blank the page silently -->
+    <div v-if="loadError" class="err-banner rise" style="--i: 0">
+      <span class="err-dot"></span>
+      <span class="err-msg">Couldn't load dashboard data. {{ loadError }}</span>
+      <button class="err-retry" @click="load">Retry</button>
+    </div>
+
+    <!-- Audience — total user count leads, front and center -->
+    <div class="hero rise" style="--i: 1">
+      <div class="hero-main">
+        <span class="hero-l">Total users</span>
+        <span class="hero-n">
+          <template v-if="loading"><span class="skeleton-hero"></span></template>
+          <template v-else>{{ fmtNum(stats.total_users) }}</template>
+        </span>
+        <span class="hero-d" v-if="stats.users_week">+{{ stats.users_week }} this week</span>
+      </div>
+      <div class="hero-side">
+        <span class="hero-side-n gold">{{ loading ? '—' : fmtNum(stats.pro_users) }}</span>
+        <span class="hero-side-l">Pro users</span>
+      </div>
+    </div>
+
     <!-- North-star -->
     <h2 class="section-title rise" style="--i: 1">North-star</h2>
     <div class="ns-grid rise" style="--i: 1">
@@ -67,21 +90,15 @@
       </template>
     </div>
 
-    <!-- Stat strip -->
+    <!-- Stat strip — secondary rollups (total users + Pro live in the hero above) -->
     <div class="statstrip rise" style="--i: 1">
       <template v-if="loading">
-        <div v-for="i in 6" :key="i" class="stat">
+        <div v-for="i in 4" :key="i" class="stat">
           <div class="skeleton-number"></div>
           <div class="skeleton-label"></div>
         </div>
       </template>
       <template v-else>
-        <div class="stat">
-          <span class="n">{{ stats.total_users ?? '—' }}</span>
-          <span class="l">Total users</span>
-          <span class="d" v-if="stats.users_week">+{{ stats.users_week }} this week</span>
-        </div>
-        <div class="stat"><span class="n gold">{{ stats.pro_users ?? '—' }}</span><span class="l">Pro users</span></div>
         <div class="stat"><span class="n">{{ stats.lessons_today ?? '—' }}</span><span class="l">Lessons today</span></div>
         <div class="stat"><span class="n">{{ stats.active_7d ?? '—' }}</span><span class="l">Active 7d</span></div>
         <div class="stat"><span class="n">{{ stats.active_30d ?? '—' }}</span><span class="l">Active 30d</span></div>
@@ -171,10 +188,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { cachedFetch } from '../../lib/apiCache'
 import Sparkline from '../../components/charts/Sparkline.vue'
 import LineChart from '../../components/charts/LineChart.vue'
 
 const loading = ref(true)
+const loadError = ref('')
 const stats = ref<any>({})
 const contentCounts = ref<any>({})
 const topLessons = ref<any[]>([])
@@ -238,6 +257,11 @@ function pct(value: number, max: number) {
   return max ? Math.round((value / max) * 100) : 0
 }
 
+function fmtNum(v: number | undefined | null): string {
+  if (v == null) return '—'
+  return Number(v).toLocaleString('en-US')
+}
+
 function initials(name: string): string {
   const parts = (name || '').trim().split(/\s+/)
   const first = parts[0]?.[0] || '·'
@@ -257,10 +281,16 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-onMounted(async () => {
+async function load() {
+  loading.value = true
+  loadError.value = ''
   try {
-    const res = await fetch('/api/dashboard')
-    if (res.ok) {
+    const res = await cachedFetch('/api/dashboard')
+    if (!res.ok) {
+      // Surface the failure instead of silently blanking the whole page to '—'.
+      const body = await res.json().catch(() => ({}))
+      loadError.value = body?.error ? String(body.error) : `Server returned ${res.status}.`
+    } else {
       const d = await res.json()
       stats.value = d.stats || {}
       contentCounts.value = d.content_counts || {}
@@ -272,24 +302,64 @@ onMounted(async () => {
       ns.value = { dau: d.dau, wau: d.wau, mau: d.mau, stickiness: d.stickiness }
       todayStats.value = d.today || {}
     }
-  } catch { /* keep defaults */ }
+  } catch (e: any) {
+    loadError.value = e?.message ? String(e.message) : 'Network error.'
+  }
   loading.value = false
+}
 
-  // Secondary: the DAU/MAU chart + tile sparklines. A failure here degrades
-  // gracefully (chart/sparklines omitted via v-if) rather than blanking the
-  // page — the north-star tiles above already rendered from the primary fetch.
+// Secondary: the DAU/MAU chart + tile sparklines. A failure here degrades
+// gracefully (chart/sparklines omitted via v-if) rather than blanking the
+// page — the north-star tiles above already rendered from the primary fetch.
+async function loadRetention() {
   try {
-    const res = await fetch('/api/dashboard?view=retention')
+    const res = await cachedFetch('/api/dashboard?view=retention')
     if (res.ok) {
       const d = await res.json()
       dauMau.value = d.dau_mau || []
     }
   } catch { /* leave dauMau empty */ }
+}
+
+onMounted(async () => {
+  await load()
+  await loadRetention()
 })
 </script>
 
 <style scoped>
 .dashboard { max-width: 1080px; }
+
+/* Load-error banner — surfaces a failed fetch instead of a silent page of '—' */
+.err-banner {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(212, 103, 58, 0.08); border-radius: 10px;
+  padding: 11px 16px; margin-bottom: 18px;
+  font-family: var(--sans); font-size: 12px; color: var(--text-2);
+}
+.err-dot { width: 6px; height: 6px; border-radius: 3px; background: var(--streak); flex-shrink: 0; }
+.err-msg { flex: 1; min-width: 0; }
+.err-retry {
+  font-family: var(--sans); font-size: 11px; font-weight: 600; color: var(--text);
+  background: var(--raised); border: none; border-radius: 6px; padding: 5px 12px; cursor: pointer;
+}
+.err-retry:hover { background: #2c2c2c; }
+
+/* Audience hero — the total user count, front and center */
+.hero {
+  display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
+  background: var(--surface); border-radius: 10px;
+  padding: 20px 24px; margin-bottom: 12px;
+}
+.hero-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hero-l { font-family: var(--sans); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.6px; color: var(--text-3); }
+.hero-n { font-family: var(--sans); font-size: 40px; font-weight: 700; letter-spacing: -1px; color: var(--text); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.hero-d { font-family: var(--sans); font-size: 11.5px; font-weight: 600; color: #7FB08A; margin-top: 2px; }
+.hero-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+.hero-side-n { font-family: var(--sans); font-size: 24px; font-weight: 700; letter-spacing: -0.3px; color: var(--text); font-variant-numeric: tabular-nums; }
+.hero-side-n.gold { color: var(--gold-light); }
+.hero-side-l { font-family: var(--sans); font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-3); }
+.skeleton-hero { display: inline-block; width: 120px; height: 40px; background: var(--raised); border-radius: 5px; animation: pulse 1.5s ease-in-out infinite; }
 
 /* Entrance: fade + 8px rise, ease-out, 30ms stagger. No springs. */
 .rise {

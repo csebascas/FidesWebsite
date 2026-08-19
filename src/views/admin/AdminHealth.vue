@@ -21,18 +21,18 @@
 
       <div class="health-card">
         <div class="health-header">
-          <span class="dot green"></span>
+          <span class="dot neutral"></span>
           <span class="health-label">Total Users</span>
         </div>
-        <span class="health-value">{{ totalUsers ?? '...' }}</span>
+        <span class="health-value">{{ totalUsers?.toLocaleString() ?? '...' }}</span>
       </div>
 
       <div class="health-card">
         <div class="health-header">
-          <span class="dot green"></span>
+          <span class="dot neutral"></span>
           <span class="health-label">Pro Users</span>
         </div>
-        <span class="health-value">{{ proUsers ?? '...' }}</span>
+        <span class="health-value">{{ proUsers?.toLocaleString() ?? '...' }}</span>
       </div>
     </div>
 
@@ -148,6 +148,7 @@ async function runIntegrityCheck() {
 .dot.red { background: #FF3B30; }
 .dot.yellow { background: #FFCC00; }
 .dot.loading { background: var(--text-3); }
+.dot.neutral { background: var(--text-3); opacity: 0.5; }
 
 .health-label {
   font-family: var(--sans);

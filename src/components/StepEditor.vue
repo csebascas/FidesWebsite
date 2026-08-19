@@ -15,6 +15,15 @@
           <span class="se-group-label">Other</span>
           <button v-for="t in otherTypes" :key="t.type" class="se-btn" @click="addStep(t.type)">{{ t.label }}</button>
         </div>
+        <div class="se-group">
+          <span class="se-group-label">More</span>
+          <select class="se-more" @change="onPickMore($event)">
+            <option value="">+ type…</option>
+            <optgroup v-for="g in moreGroups" :key="g.category" :label="g.category">
+              <option v-for="t in g.types" :key="t.type" :value="t.type">{{ t.label }}</option>
+            </optgroup>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -148,7 +157,15 @@
             <button class="se-add-item" @click="if (!step.panels) step.panels = []; step.panels.push({ title: '', body: '' }); emitUpdate()">+ Add panel</button>
           </template>
 
-          <!-- fallback: raw JSON -->
+          <!-- schema-driven editor for the long tail of step types -->
+          <GenericStepFields
+            v-else-if="schemaFor(step.type)"
+            :step="step"
+            :schema="schemaFor(step.type)!.fields"
+            @change="emitUpdate"
+          />
+
+          <!-- fallback: raw JSON for genuinely unknown types -->
           <template v-else>
             <textarea v-model="step._rawJson" class="se-textarea mono" rows="6" @input="handleRawEdit(step)"></textarea>
           </template>
@@ -161,10 +178,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import GenericStepFields from './GenericStepFields.vue'
+import { STEP_SCHEMAS, SCHEMA_TYPES, type StepSchema } from '../lib/stepSchemas'
 
 const props = defineProps<{ modelValue: any[] }>()
 const emit = defineEmits<{ 'update:modelValue': [value: any[]], 'selectStep': [index: number] }>()
+
+function schemaFor(type: string): StepSchema | undefined {
+  return STEP_SCHEMAS[type]
+}
+
+// "More types" picker — every schema-backed type, grouped by category.
+const moreGroups = computed(() => {
+  const cats = ['Content', 'Quiz', 'Interactive', 'Other'] as const
+  return cats
+    .map((category) => ({
+      category,
+      types: SCHEMA_TYPES.filter((t) => STEP_SCHEMAS[t].category === category).map((t) => ({ type: t, label: STEP_SCHEMAS[t].label })),
+    }))
+    .filter((g) => g.types.length > 0)
+})
+
+function onPickMore(e: Event) {
+  const sel = e.target as HTMLSelectElement
+  const type = sel.value
+  if (type) addStep(type)
+  sel.value = ''
+}
 
 const steps = ref<any[]>([])
 const activeIndex = ref(-1)
@@ -197,8 +238,11 @@ watch(() => props.modelValue, (val) => {
   initialized = true
   steps.value = (val || []).map((s: any) => {
     const copy = { ...s, _key: `k${keyCounter++}` }
-    const known = [...contentTypes, ...quizTypes, ...otherTypes].map(t => t.type)
-    if (!known.includes(s.type)) {
+    // Bespoke-template types + schema-driven types both have real editors;
+    // only genuinely unknown types fall back to the raw-JSON textarea.
+    const bespoke = [...contentTypes, ...quizTypes, ...otherTypes].map(t => t.type)
+    const known = new Set([...bespoke, ...SCHEMA_TYPES])
+    if (!known.has(s.type)) {
       copy._rawJson = JSON.stringify(s, null, 2)
     }
     return copy
@@ -240,9 +284,10 @@ function addStep(type: string) {
     vocabulary: { type: 'vocabulary', term: '', definition: '', etymology: '', context: '', example: '' },
     storyboard: { type: 'storyboard', eyebrow: '', panels: [{ title: '', body: '' }] },
     'xp-award': { type: 'xp-award', xp: 25 },
-    explanation: { type: 'explanation', title: '', body: '' },
   }
-  const step = { ...(defaults[type] || { type }), _key: `k${keyCounter++}` }
+  // Bespoke default → schema default → bare {type}.
+  const base = defaults[type] || STEP_SCHEMAS[type]?.make() || { type }
+  const step = { ...base, _key: `k${keyCounter++}` }
   steps.value.push(step)
   activeIndex.value = steps.value.length - 1
   emit('selectStep', activeIndex.value)
@@ -284,6 +329,12 @@ function remove(index: number) {
   padding: 3px 7px; cursor: pointer; transition: all 0.15s;
 }
 .se-btn:hover { border-color: var(--gold); color: var(--text); }
+.se-more {
+  font-family: var(--sans); font-size: 11px; color: var(--text-2);
+  background: var(--raised); border: 1px solid var(--line); border-radius: 4px;
+  padding: 3px 6px; cursor: pointer; outline: none;
+}
+.se-more:hover { border-color: var(--gold); color: var(--text); }
 
 .se-list { display: flex; flex-direction: column; gap: 3px; }
 

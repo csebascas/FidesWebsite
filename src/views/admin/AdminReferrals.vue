@@ -140,6 +140,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, h as vnode } from 'vue'
+import { cachedFetch } from '../../lib/apiCache'
 
 const loading = ref(true)
 const error = ref('')
@@ -186,7 +187,7 @@ const FunnelStep = (props: { label: string; value: any; total: any; tone?: strin
 async function load() {
   loading.value = true
   try {
-    const res = await fetch('/api/dashboard?view=referrals')
+    const res = await cachedFetch('/api/dashboard?view=referrals')
     if (!res.ok) { error.value = 'Failed to load referral data.'; loading.value = false; return }
     const d = await res.json()
     headline.value = d.headline ?? {}

@@ -22,9 +22,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .gt('streak_current', 0)
       .lt('streak_last_date', new Date(Date.now() - 3 * 86400000).toISOString().slice(0, 10)),
 
-    supabase.from('users').select('*', { count: 'exact', head: true }),
+    // Match admin_dashboard_data()'s canonical definition: exclude bots
+    // (is_bot true) and soft-deleted rows, so this count agrees with the
+    // Overview's "Total users" instead of quietly counting bots + deleted.
+    supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .not('is_bot', 'is', true)
+      .is('deleted_at', null),
 
-    supabase.from('users').select('*', { count: 'exact', head: true }).eq('subscription_tier', 'pro'),
+    supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true })
+      .eq('subscription_tier', 'pro')
+      .not('is_bot', 'is', true),
   ]);
 
   const dbConnected = dbCheck.status === 'fulfilled' && !dbCheck.value.error;

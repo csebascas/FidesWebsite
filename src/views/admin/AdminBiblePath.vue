@@ -52,6 +52,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { cachedFetch } from '../../lib/apiCache'
 
 const loading = ref(true)
 const error = ref('')
@@ -69,7 +70,7 @@ function rateClass(v: number): string {
 
 onMounted(async () => {
   try {
-    const res = await fetch('/api/dashboard?view=bible-path')
+    const res = await cachedFetch('/api/dashboard?view=bible-path')
     if (!res.ok) { error.value = 'Failed to load Bible Path data.'; loading.value = false; return }
     const d = await res.json()
     overall.value = d.overall ?? {}

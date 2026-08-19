@@ -171,6 +171,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { cachedFetch } from '../../lib/apiCache'
 
 const loading = ref(true)
 const funnel = ref<any>({})
@@ -353,7 +354,7 @@ function productLabel(productId: string): string {
 
 onMounted(async () => {
   try {
-    const res = await fetch('/api/dashboard?view=revenue')
+    const res = await cachedFetch('/api/dashboard?view=revenue')
     if (res.ok) {
       const d = await res.json()
       funnel.value = d.funnel || {}

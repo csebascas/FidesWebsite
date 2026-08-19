@@ -58,6 +58,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { cachedFetch } from '../../lib/apiCache'
 import FunnelBars from '../../components/charts/FunnelBars.vue'
 
 const loading = ref(true)
@@ -125,7 +126,7 @@ const sends = computed(() => notifSends.value || [])
 
 onMounted(async () => {
   try {
-    const res = await fetch('/api/dashboard?view=engagement')
+    const res = await cachedFetch('/api/dashboard?view=engagement')
     if (!res.ok) { error.value = 'Failed to load engagement data.'; loading.value = false; return }
     const d = await res.json()
     offerFunnel.value = d.offer_funnel ?? []
