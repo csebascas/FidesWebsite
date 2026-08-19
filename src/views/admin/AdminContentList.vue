@@ -53,9 +53,17 @@
                 <span class="color-dot" :style="{ background: row[col.key] }"></span>
               </template>
               <template v-else-if="col.key === 'active' || col.key === 'published' || col.key === 'featured' || col.key === 'is_featured'">
-                <span class="bool-badge" :class="row[col.key] ? 'yes' : 'no'">
-                  {{ row[col.key] ? 'Yes' : 'No' }}
-                </span>
+                <button
+                  type="button"
+                  class="bool-toggle"
+                  :class="row[col.key] ? 'yes' : 'no'"
+                  :disabled="togglingId === row.id + col.key"
+                  :title="toggleTitle(col.key, row[col.key])"
+                  @click.stop="toggleBool(row, col.key)"
+                >
+                  <span class="bool-knob"></span>
+                  {{ row[col.key] ? onLabel(col.key) : offLabel(col.key) }}
+                </button>
               </template>
               <template v-else>
                 {{ row[col.key] ?? '—' }}
@@ -253,6 +261,47 @@ function sortBy(key: string) {
 
 function goToEdit(id: string) {
   router.push(`/d/content/${contentType.value}/${id}`)
+}
+
+// Inline publish/active toggles. `active` (lessons/tracks/pillars) and
+// `published` (articles) are the live/hidden gate; featured is a highlight flag.
+const togglingId = ref('')
+
+function onLabel(key: string): string {
+  if (key === 'active') return 'Live'
+  if (key === 'published') return 'Published'
+  return 'Yes'
+}
+function offLabel(key: string): string {
+  if (key === 'active') return 'Disabled'
+  if (key === 'published') return 'Draft'
+  return 'No'
+}
+function toggleTitle(key: string, current: boolean): string {
+  if (key === 'active') return current ? 'Disable — hide from the app' : 'Enable — show in the app'
+  if (key === 'published') return current ? 'Unpublish — move to draft' : 'Publish'
+  return current ? 'Turn off' : 'Turn on'
+}
+
+async function toggleBool(row: any, key: string) {
+  const guard = row.id + key
+  if (togglingId.value === guard) return
+  togglingId.value = guard
+  const next = !row[key]
+  const prev = row[key]
+  row[key] = next // optimistic
+  errorMsg.value = ''
+  const { error } = await adminRpc({
+    action: 'update',
+    table: contentType.value,
+    id: row.id,
+    data: { [key]: next },
+  })
+  if (error) {
+    row[key] = prev // revert
+    errorMsg.value = `Couldn't update ${key}: ${error}`
+  }
+  togglingId.value = ''
 }
 
 const NEW_DEFAULTS: Record<string, Record<string, any>> = {
@@ -548,22 +597,42 @@ watch(contentType, () => {
   border: 1px solid var(--line);
 }
 
-.bool-badge {
+/* Inline publish/active toggle — a real switch, not a read-only badge */
+.bool-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sans);
   font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
+  font-weight: 600;
+  padding: 3px 9px 3px 6px;
+  border-radius: 100px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.bool-toggle:disabled { opacity: 0.5; cursor: progress; }
+
+.bool-knob {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%; /* eslint-disable-line no-restricted-syntax */
+  background: currentColor;
+  flex-shrink: 0;
 }
 
-.bool-badge.yes {
+.bool-toggle.yes {
   background: rgba(52, 199, 89, 0.15);
   color: #34C759;
 }
+.bool-toggle.yes:hover:not(:disabled) { background: rgba(52, 199, 89, 0.24); }
 
-.bool-badge.no {
-  background: rgba(142, 142, 147, 0.1);
+.bool-toggle.no {
+  background: rgba(142, 142, 147, 0.12);
   color: var(--text-3);
 }
+.bool-toggle.no:hover:not(:disabled) { background: rgba(142, 142, 147, 0.2); color: var(--text-2); }
 
 .empty {
   text-align: center;
