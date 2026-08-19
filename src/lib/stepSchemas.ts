@@ -307,6 +307,17 @@ export const STEP_SCHEMAS: Record<string, StepSchema> = {
     make: () => ({ type: 'ladder', source: '', steps: [{ q: '', options: ['Yes', 'No'], answer: 1 }], conclusion: '' }),
   },
 
+  spoterror: {
+    label: 'Spot Error',
+    category: 'Interactive',
+    fields: [
+      TA('prompt', 'Prompt', 2),
+      { key: 'segments', label: 'Segments (mark the wrong one)', kind: 'objectList', itemLabel: 'segment', itemFields: [TA('text', 'Text', 2), BOOL('error', 'Is the error')] },
+      TA('explanation', 'Explanation', 3),
+    ],
+    make: () => ({ type: 'spoterror', prompt: '', segments: [{ text: '', error: false }], explanation: '' }),
+  },
+
   // Deeply cross-referenced — scalar fields as inputs, nested arrays as JSON.
   checkpoint: {
     label: 'Checkpoint',
