@@ -108,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, watch, onMounted } from 'vue'
 import { adminRpc } from '../../lib/supabase'
 
 type SocialType = 'website' | 'instagram' | 'youtube' | 'x'
@@ -116,6 +116,36 @@ const SOCIAL_TYPES: SocialType[] = ['website', 'instagram', 'youtube', 'x']
 const SOCIAL_LABEL: Record<string, string> = { website: 'Website', instagram: 'Instagram', youtube: 'YouTube', x: 'X' }
 
 const currentMonth = new Date().toISOString().slice(0, 7) // YYYY-MM
+
+// Autosaved draft of whatever's in the editor, so a failed save (e.g. a
+// backend constraint error), an accidental reload, or a closed tab never
+// loses typed-out story/why-partnered text. Cleared once a save succeeds.
+const DRAFT_KEY = 'fides-admin-com-draft'
+
+function saveDraft() {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(form))
+  } catch {
+    // localStorage unavailable (private mode, quota, etc.) — draft just won't persist.
+  }
+}
+
+function loadDraft(): any | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    // ignore
+  }
+}
 
 const rows = ref<any[]>([])
 const saving = ref(false)
@@ -246,6 +276,7 @@ async function save() {
     }
   }
 
+  clearDraft()
   saving.value = false
   saved.value = true
   setTimeout(() => { saved.value = false }, 2000)
@@ -253,12 +284,29 @@ async function save() {
   if (savedId) selectById(savedId)
 }
 
+// Autosave the editor on every change (debounced) so typed-out story/why-
+// partnered text survives a failed save, reload, or closed tab.
+let draftTimer: ReturnType<typeof setTimeout> | undefined
+watch(form, () => {
+  clearTimeout(draftTimer)
+  draftTimer = setTimeout(saveDraft, 400)
+}, { deep: true })
+
 onMounted(async () => {
   await load()
   // Preselect the current live one, else the newest, else a blank new form.
   const live = rows.value.find((r) => r.active && r.month === currentMonth)
   if (live) selectRow(live)
   else if (rows.value.length) selectRow(rows.value[0])
+
+  // A saved draft means the editor had unsaved work (e.g. a failed save, or
+  // the tab closing mid-edit) — restore it over whatever got preselected
+  // above, since it reflects the user's most recent typing.
+  const draft = loadDraft()
+  const hasContent = draft && [draft.name, draft.tagline, draft.body_md, draft.why_partnered_md].some((v) => String(v ?? '').trim())
+  if (hasContent) {
+    Object.assign(form, draft, { socials: makeSlots(draft.socials) })
+  }
 })
 </script>
 
