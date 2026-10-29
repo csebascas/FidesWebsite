@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAdminClient } from './_lib/supabase.js';
 import { verifyAdmin } from './_lib/auth.js';
+import { fetchRelease15Firebase } from './_lib/ga4.js';
 import { fetchSuperwallMetrics, fetchPaywallAnalytics, fetchPlatformRevenue, getSuperwallError } from './_lib/superwall.js';
 
 // Every dashboard tab switch previously re-ran its full RPC (and, for
@@ -83,12 +84,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // pillar picker / year slider steps, paywall outcomes and the Pro sale.
     if (view === 'release-15') {
       const data = await cached('release-15', async () => {
-        const [r, onb] = await Promise.all([
+        const [r, onb, firebase] = await Promise.all([
           supabase.rpc('admin_release_15_data'),
           supabase.rpc('admin_onboarding_funnel', { p_days: 14 }),
+          fetchRelease15Firebase(30),
         ]);
         if (r.error) throw r.error;
-        return { ...r.data, onboarding: onb.error ? null : onb.data };
+        return { ...r.data, onboarding: onb.error ? null : onb.data, firebase };
       });
       res.setHeader('Cache-Control', 'private, max-age=30');
       return res.status(200).json(data);

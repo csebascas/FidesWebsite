@@ -54,22 +54,28 @@
       </div>
 
       <div class="section">
-        <h2 class="section-title">Picker and slider answers</h2>
-        <div v-if="!d.picker_events?.length && !d.year_minutes?.length" class="note small">Empty until the build that mirrors these events (next release after 1.5.0) is in people's hands. The pillar table above is already live.</div>
-        <div v-else class="cols">
+        <h2 class="section-title">Firebase · picker, slider and sale events</h2>
+        <div v-if="!d.firebase" class="note small">Not connected. Set <code>GA4_PROPERTY_ID</code> and <code>GA4_SERVICE_ACCOUNT</code> in Vercel to read these from Firebase, which covers builds already released.</div>
+        <template v-else>
           <div class="table-scroll">
             <table class="tbl">
-              <thead><tr><th>Pillar picked</th><th class="num">Devices</th></tr></thead>
-              <tbody><tr v-for="p in d.picker_events" :key="p.pillar"><td class="you">{{ p.pillar }}</td><td class="num">{{ p.devices }}</td></tr></tbody>
+              <thead><tr><th>Event</th><th class="num">Count</th><th class="num">Users</th></tr></thead>
+              <tbody>
+                <tr v-for="e in fbEvents" :key="e.name"><td class="you">{{ e.label }}</td><td class="num">{{ e.count }}</td><td class="num">{{ e.users }}</td></tr>
+              </tbody>
             </table>
           </div>
-          <div class="table-scroll">
-            <table class="tbl">
-              <thead><tr><th>Minutes a day</th><th class="num">Devices</th></tr></thead>
-              <tbody><tr v-for="m in d.year_minutes" :key="m.minutes"><td class="you">{{ m.minutes }}</td><td class="num">{{ m.devices }}</td></tr></tbody>
-            </table>
+          <div class="cols" v-if="fbBreakdowns.length" style="margin-top:16px">
+            <div v-for="b in fbBreakdowns" :key="b.event" class="table-scroll">
+              <table class="tbl">
+                <thead><tr><th>{{ b.label }}</th><th class="num">Count</th></tr></thead>
+                <tbody><tr v-for="r in b.rows" :key="r.value"><td class="you">{{ r.value }}</td><td class="num">{{ r.count }}</td></tr></tbody>
+              </table>
+            </div>
           </div>
-        </div>
+          <p v-if="d.firebase.note" class="hint">{{ d.firebase.note }}</p>
+        </template>
+        <p class="hint">Last 30 days, from Firebase Analytics. Firebase can lag by a day. Breakdowns count from the day the parameter was registered in GA4.</p>
       </div>
 
       <div class="section">
@@ -95,11 +101,11 @@
       <div class="section">
         <h2 class="section-title">Pro sale</h2>
         <div class="statstrip">
-          <div class="stat"><span class="n">{{ d.sale?.popup_devices ?? 0 }}</span><span class="l">Saw the popup</span><span class="d">{{ d.sale?.popup_shown ?? 0 }} times</span></div>
-          <div class="stat"><span class="n">{{ d.sale?.card_tap_devices ?? 0 }}</span><span class="l">Tapped the card</span><span class="d">{{ d.sale?.card_taps ?? 0 }} taps</span></div>
+          <div class="stat"><span class="n">{{ fbSale('pro_sale_popup', 'users', d.sale?.popup_devices) }}</span><span class="l">Saw the popup</span><span class="d">{{ fbSale('pro_sale_popup', 'count', d.sale?.popup_shown) }} times</span></div>
+          <div class="stat"><span class="n">{{ fbSale('pro_sale_card_tap', 'users', d.sale?.card_tap_devices) }}</span><span class="l">Tapped the card</span><span class="d">{{ fbSale('pro_sale_card_tap', 'count', d.sale?.card_taps) }} taps</span></div>
           <div class="stat"><span class="n">{{ salePaywall.shown }}</span><span class="l">Sale paywall shown</span><span class="d">{{ salePaywall.unlocked }} bought</span></div>
         </div>
-        <p class="hint">The sale is off in prod until you turn it on, and the popup and card counts start with the build after 1.5.0. The sale paywall row comes from Superwall events and counts once the sale is live.</p>
+        <p class="hint">The sale is off in prod until you turn it on. Popup and card counts use the higher of our database and Firebase. The sale paywall count comes from our database and fills in once the sale is live.</p>
       </div>
     </template>
   </div>
@@ -122,8 +128,32 @@ function sumPlacement(placement: string) {
     unlocked: rows.reduce((a: number, p: any) => a + Number(p.unlocked ?? 0), 0),
   }
 }
+const FB_LABELS: Record<string, string> = {
+  onboarding_pillar_picked: 'Pillar picked',
+  onboarding_year_minutes: 'Year slider minutes',
+  pro_sale_popup: 'Sale popup shown',
+  pro_sale_card_tap: 'Sale card tapped',
+}
+const fbEvents = computed(() =>
+  Object.keys(FB_LABELS).map((name) => ({
+    name,
+    label: FB_LABELS[name],
+    count: d.value.firebase?.events?.[name]?.count ?? 0,
+    users: d.value.firebase?.events?.[name]?.users ?? 0,
+  })),
+)
+const fbBreakdowns = computed(() =>
+  Object.entries(d.value.firebase?.breakdowns ?? {})
+    .filter(([, rows]) => (rows as any[]).length)
+    .map(([event, rows]) => ({ event, label: FB_LABELS[event] || event, rows: rows as Array<{ value: string; count: number }> })),
+)
 const gate = computed(() => sumPlacement('track_gate'))
 const salePaywall = computed(() => sumPlacement('pro_sale'))
+
+// Firebase sees every released build; app_events only the builds that mirror the event.
+function fbSale(event: string, key: 'count' | 'users', own: number | undefined): number {
+  return Math.max(Number(own ?? 0), Number(d.value.firebase?.events?.[event]?.[key] ?? 0))
+}
 
 function pct(n: number | null | undefined, den: number | null | undefined): number {
   return den ? Math.round((Number(n ?? 0) / Number(den)) * 100) : 0
