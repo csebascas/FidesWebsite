@@ -79,6 +79,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json(data);
     }
 
+    // ?view=release-15 serves the Release 1.5 tab: one-free-track picks, the
+    // pillar picker / year slider steps, paywall outcomes and the Pro sale.
+    if (view === 'release-15') {
+      const data = await cached('release-15', async () => {
+        const [r, onb] = await Promise.all([
+          supabase.rpc('admin_release_15_data'),
+          supabase.rpc('admin_onboarding_funnel', { p_days: 14 }),
+        ]);
+        if (r.error) throw r.error;
+        return { ...r.data, onboarding: onb.error ? null : onb.data };
+      });
+      res.setHeader('Cache-Control', 'private, max-age=30');
+      return res.status(200).json(data);
+    }
+
     // ?view=bible-path serves the Bible Path tab: adoption + per-plan completion.
     if (view === 'bible-path') {
       const data = await cached('bible-path', async () => {
