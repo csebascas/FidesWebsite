@@ -76,6 +76,7 @@ const NAV_TOP = [
   { to: '/d/retention', label: 'Retention', icon: `<path d="M7 2.5c-2.6 2-4 4.1-4 6.3a4 4 0 1 0 8 0c0-2.2-1.4-4.3-4-6.3z" ${STROKE} stroke-width="1.1"/>` },
   { to: '/d/engagement', label: 'Engagement', icon: `<path d="M4 6.5V4a3 3 0 0 1 6 0v2.5M2.5 6.5h9l.7 4.2a1 1 0 0 1-1 1.2H2.8a1 1 0 0 1-1-1.2z" ${STROKE} stroke-width="1.1"/>` },
   { to: '/d/bible-path', label: 'Bible Path', icon: `<path d="M7 3.2C5.8 2.2 4 1.8 2 2v8c2 -0.2 3.8 0.2 5 1.2 1.2-1 3-1.4 5-1.2V2c-2 -0.2-3.8 0.2-5 1.2z" ${STROKE} stroke-width="1.1"/><path d="M7 3.2v8" ${STROKE} stroke-width="1.1"/>` },
+  { to: '/d/release-15', label: 'Release 1.5', icon: `<path d="M3 11.5V2.5M3 2.5h7l-1.6 2.4L10 7.3H3" ${STROKE} stroke-width="1.2"/>` },
 ]
 
 const NAV_MONEY = [

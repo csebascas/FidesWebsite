@@ -99,6 +99,11 @@ const routes = [
         meta: { title: 'Referrals — Fides Admin', requiresAuth: true },
       },
       {
+        path: 'release-15',
+        component: () => import('../views/admin/AdminRelease15.vue'),
+        meta: { title: 'Release 1.5 — Fides Admin', requiresAuth: true },
+      },
+      {
         path: 'offers',
         component: () => import('../views/admin/AdminOffers.vue'),
         meta: { title: 'Offers — Fides Admin', requiresAuth: true },
