@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { verifyAdmin } from '../_lib/auth.js';
 import { getAdminClient } from '../_lib/supabase.js';
+import { writeAudit } from '../_lib/audit.js';
 
 /**
  * Admin RPC endpoint — proxies Supabase operations using the service role key.
@@ -63,6 +64,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const supabase = getAdminClient();
+
+  if (action !== 'select') {
+    await writeAudit(supabase, session.email, action, tableName ?? 'push_offer', id ?? match ?? null, {
+      match_keys: match ? Object.keys(match) : undefined,
+      data_keys: data && typeof data === 'object' ? Object.keys(data) : undefined,
+      recipients: Array.isArray(userIds) ? userIds.length : undefined,
+    });
+  }
 
   try {
     if (action === 'send_offer') {
