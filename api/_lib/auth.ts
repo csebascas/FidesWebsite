@@ -10,11 +10,18 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 // request.
 
 const COOKIE_NAME = 'fides_admin_session';
-const SESSION_SECONDS = 30 * 24 * 60 * 60; // 30 days
+const SESSION_SECONDS = 7 * 24 * 60 * 60; // 7 days
+
+// Bump ADMIN_SESSION_VERSION in the Vercel env (and redeploy) to sign every admin
+// out at once, e.g. after a suspected cookie theft or a secret rotation.
+function sessionVersion(): string {
+  return process.env.ADMIN_SESSION_VERSION || '1';
+}
 
 export interface AdminSession {
   email: string;
   exp: number;
+  v?: string;
 }
 
 let warnedNoDedicatedSecret = false;
@@ -47,7 +54,7 @@ export function allowedEmails(): string[] {
 
 export function createSessionCookie(email: string): string {
   const payload = Buffer.from(
-    JSON.stringify({ email, exp: Date.now() + SESSION_SECONDS * 1000 })
+    JSON.stringify({ email, exp: Date.now() + SESSION_SECONDS * 1000, v: sessionVersion() })
   ).toString('base64url');
   const token = `${payload}.${sign(payload)}`;
   return `${COOKIE_NAME}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${SESSION_SECONDS}`;
@@ -79,6 +86,9 @@ export function readSession(req: VercelRequest): AdminSession | null {
   }
 
   if (!session?.email || typeof session.exp !== 'number' || Date.now() > session.exp) return null;
+  // Cookies minted under the old 30-day lifetime expire too far out: force a re-login.
+  if (session.exp > Date.now() + SESSION_SECONDS * 1000 + 60_000) return null;
+  if ((session.v ?? '1') !== sessionVersion()) return null;
   if (!allowedEmails().includes(session.email.toLowerCase())) return null;
   return session;
 }
