@@ -1,7 +1,9 @@
 <template>
   <div class="offers">
     <h1 class="page-title">Offers</h1>
-    <p class="subtitle">Win-back / notification offers: how many lapsed users we sent an offer to, how many tapped it, and how many re-subscribed from the deal (a purchase within 7 days of a tap).</p>
+    <p class="subtitle">Send Superwall offers and track sends, taps, and purchases within seven days of a tap.</p>
+
+    <PlacementNotificationForm />
 
     <div v-if="loading" class="note">Loading…</div>
     <div v-else-if="error" class="note err">{{ error }}</div>
@@ -49,9 +51,9 @@
 
       <!-- Headline totals -->
       <div class="statstrip" v-if="funnel.length">
-        <div class="stat"><span class="n">{{ totals.sent }}</span><span class="l">Sent</span><span class="d">lapsed users nudged</span></div>
+        <div class="stat"><span class="n">{{ totals.sent }}</span><span class="l">Sent</span><span class="d">Recipients</span></div>
         <div class="stat"><span class="n">{{ totals.tapped }}</span><span class="l">Tapped</span><span class="d">{{ pct(totals.tapped, totals.sent) }}% of sent</span></div>
-        <div class="stat"><span class="n gold">{{ totals.converted }}</span><span class="l">Re-subscribed</span><span class="d">from the deal</span></div>
+        <div class="stat"><span class="n gold">{{ totals.converted }}</span><span class="l">Purchased</span><span class="d">from the deal</span></div>
         <div class="stat"><span class="n" :class="ragClass(pct(totals.converted, totals.tapped), 20, 40)">{{ pct(totals.converted, totals.tapped) }}%</span><span class="l">Tap → paid</span></div>
       </div>
 
@@ -84,7 +86,7 @@
             </tbody>
           </table>
         </div>
-        <p class="hint">Copy must match the real App Store offer attached to the <code>notification_offer</code> paywall. Only lapsed, eligible users are sent these.</p>
+        <p class="hint">Copy must match the real App Store offer attached to the <code>notification_offer</code> paywall. This placement is used by the win-back automation.</p>
       </div>
 
       <!-- Conversions drill-down -->
@@ -120,6 +122,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import PlacementNotificationForm from './PlacementNotificationForm.vue'
 
 interface FunnelRow {
   offer_key: string

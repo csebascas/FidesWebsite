@@ -54,6 +54,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { action, table, data, id, match, select, order, limit: lim, userIds } = req.body || {};
 
+  if (action === 'preview_placement_notification' || action === 'queue_placement_notification') {
+    const preview = action === 'preview_placement_notification';
+    const { placement, audience, title, body, expectedCount } = data ?? {};
+    if (typeof id !== 'string' || !UUID_RE.test(id)
+      || ![placement, audience, title, body].every((value) => typeof value === 'string')
+      || !Array.isArray(userIds) || !userIds.every((value) => typeof value === 'string' && UUID_RE.test(value))
+      || (!preview && (!Number.isSafeInteger(expectedCount) || expectedCount < 1))) {
+      return res.status(400).json({ error: 'Check the campaign details and user IDs.' });
+    }
+    const supabase = getAdminClient();
+    const { data: count, error } = await supabase.rpc('queue_placement_notification', {
+      p_id: id,
+      p_placement: placement,
+      p_audience: audience,
+      p_title: title,
+      p_body: body,
+      p_user_ids: userIds,
+      p_preview: preview,
+      p_expected_count: preview ? null : expectedCount,
+    });
+    if (error) {
+      if (error.code === '22023') return res.status(400).json({ error: error.message });
+      console.error('[placement notification]', error);
+      return res.status(500).json({ error: 'Could not process the notification campaign.' });
+    }
+    if (!preview) {
+      await writeAudit(supabase, session.email, action, 'placement_notification_campaigns', id, { audience, count });
+    }
+    return res.status(200).json({ count, offerKey: `push_${id}` });
+  }
+
   if (!action || (action !== 'send_offer' && !table)) {
     return res.status(400).json({ error: 'action and table are required' });
   }
